@@ -15,6 +15,7 @@ The documents are intentionally split by concern so architecture, operations, se
 | [09-testing-quality.md](09-testing-quality.md) | Unit, E2E, offline and deployment tests |
 | [10-development-workflow.md](10-development-workflow.md) | Daily development flow and branch discipline |
 | [11-service-to-service.md](11-service-to-service.md) | Optional service-to-service integration pattern and guardrails |
-| [12-offline-sync-reference-implementation.md](12-offline-sync-reference-implementation.md) | End-to-end worked example of local copy, outbox, batch sync and reconciliation |
+| [12-offline-sync-reference-implementation.md](12-offline-sync-reference-implementation.md) | End-to-end local copy, outbox, batch sync and reconciliation |
+| [13-versioning-and-forced-updates.md](13-versioning-and-forced-updates.md) | Semantic versioning, deployment tags and mandatory PWA updates |
 
-Architecture decisions are recorded separately under [adr/](adr/), including the centralized offline synchronization decision.
+Architecture decisions are recorded separately under [adr/](adr/). All coding agents must also read the repository root [AGENTS.md](../AGENTS.md).

@@ -10,6 +10,8 @@ on:
       - "scripts/**"
       - "powerpages.config.json"
       - "package.json"
+      - "package-lock.json"
+      - "AGENTS.md"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
@@ -24,7 +26,7 @@ on:
           - production
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 concurrency:
@@ -38,6 +40,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -51,8 +55,34 @@ jobs:
           npm run check
           npm test
 
+      - name: Resolve release version and enforce bump
+        shell: bash
+        env:
+          TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+        run: |
+          APP_VERSION="$(npm run --silent version:print)"
+          DEPLOY_TAG="deploy/${TARGET_ENVIRONMENT}/v${APP_VERSION}"
+
+          git fetch --force --tags
+
+          if git show-ref --verify --quiet "refs/tags/${DEPLOY_TAG}"; then
+            echo "Version ${APP_VERSION} has already been deployed to ${TARGET_ENVIRONMENT}."
+            echo "Bump the version first, for example: npm run version:bump -- patch"
+            exit 1
+          fi
+
+          echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
+          echo "TARGET_ENVIRONMENT=${TARGET_ENVIRONMENT}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TAG=${DEPLOY_TAG}" >> "$GITHUB_ENV"
+          echo "Deploying version ${APP_VERSION} to ${TARGET_ENVIRONMENT}"
+
       - name: Build frontend and Server Logic snapshot
         run: npm run build
+
+      - name: Verify built version
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'); const v=JSON.parse(fs.readFileSync('dist/version.json')); if(v.version !== process.argv[1]) { console.error('Built version mismatch'); process.exit(1) }" "$APP_VERSION"
 
       - name: Install Power Platform CLI
         uses: microsoft/powerplatform-actions/actions-install@v1
@@ -75,3 +105,11 @@ jobs:
 
       - name: Upload Code Site
         run: pac pages upload-code-site --rootPath .
+
+      - name: Record successful deployment version
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$DEPLOY_TAG" -m "Deployed PowerPagesAsCode v$APP_VERSION to $TARGET_ENVIRONMENT"
+          git push origin "refs/tags/$DEPLOY_TAG"

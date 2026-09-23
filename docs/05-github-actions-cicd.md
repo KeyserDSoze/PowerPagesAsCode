@@ -5,10 +5,13 @@
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`:
 
 1. install dependencies;
-2. frontend static/type checks;
-3. synchronize and validate Server Logic;
-4. Vitest unit tests;
-5. Playwright Chromium tests.
+2. validate synchronized application version;
+3. frontend static/type checks;
+4. synchronize and validate Server Logic;
+5. Vitest unit tests;
+6. production build;
+7. verify generated `dist/version.json`;
+8. Playwright Chromium tests.
 
 CI does not require Power Platform credentials.
 
@@ -21,13 +24,31 @@ The deployment is intentionally **atomic**:
 ```text
 frontend changed OR backend changed
   -> validate whole repository
-  -> build frontend
+  -> enforce fresh release version for target environment
+  -> build frontend + version.json
   -> sync backend deployment snapshot
   -> authenticate to Power Platform
   -> pac pages upload-code-site --rootPath .
+  -> create deployment version tag
 ```
 
 We do not run concurrent independent frontend/backend uploads. Keeping one release unit avoids UI/API contract skew.
+
+## Version gate
+
+The workflow reads the semantic version from the root `package.json`.
+
+A successful deployment is recorded as:
+
+```text
+deploy/<environment>/v<version>
+```
+
+If that tag already exists, the workflow fails before deployment and requires an explicit version bump.
+
+This allows the same release to be promoted across DEV, TEST and PROD but prevents accidentally uploading the same version twice to the same environment.
+
+See `13-versioning-and-forced-updates.md`.
 
 ## PAC CLI
 
@@ -35,7 +56,8 @@ We do not run concurrent independent frontend/backend uploads. Keeping one relea
 
 - site name is `PowerPagesAsCode`;
 - compiled frontend is in `dist`;
-- landing page is `index.html`.
+- landing page is `index.html`;
+- the build includes the PWA assets and `version.json`.
 
 If the actual Power Pages site has a different display name, update `siteName` before first deployment.
 
@@ -48,7 +70,7 @@ Recommended policy:
 - manual deployment → test.
 - manual deployment with GitHub Environment approval → production.
 
-If you prefer immutable releases, change production promotion to tag/release-based deployment.
+Use the same committed application version when promoting the same immutable release between environments.
 
 ## Official references
 

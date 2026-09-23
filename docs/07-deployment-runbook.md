@@ -9,10 +9,29 @@
 5. Disable unwanted authentication providers/open registration.
 6. Create the application Web Role(s).
 7. Create least-privilege Table Permissions.
-8. Assign the Web Role(s) to `health` and `field-service` Server Logic.
+8. Assign the Web Role(s) to Server Logic endpoints.
 9. Keep `FieldService/EnableWriteDemo` absent or `false` initially.
 10. Configure the GitHub OIDC CI/CD application and Dataverse Application User.
 11. Configure GitHub Environments and variables.
+12. Configure required reviewers for production.
+
+## Release version
+
+The initial version is:
+
+```text
+0.0.1
+```
+
+Before deploying a new release to an environment that already received the current version, bump it explicitly:
+
+```bash
+npm run version:bump -- patch
+```
+
+or choose a semantic minor/major bump when appropriate.
+
+Commit the version bump together with the release changes.
 
 ## First local validation
 
@@ -24,7 +43,11 @@ npm run test:e2e
 npm run build
 ```
 
-Inspect `dist/` and verify `.powerpages-site/server-logic/*/*.js` matches `src/backend`.
+Inspect:
+
+- `dist/version.json`;
+- generated PWA assets;
+- `.powerpages-site/server-logic/*/*.js` versus `src/backend`.
 
 ## First manual upload
 
@@ -34,6 +57,8 @@ After PAC CLI authentication:
 pac pages upload-code-site --rootPath .
 ```
 
+For normal releases prefer the GitHub Actions deployment workflow because it also enforces/records the application version.
+
 Then verify:
 
 - site loads;
@@ -42,7 +67,23 @@ Then verify:
 - health endpoint responds;
 - unauthorized user cannot call Server Logic;
 - Field Service read only returns records allowed by Table Permissions;
-- write demo remains disabled.
+- write demo remains disabled;
+- `/version.json` reports the deployed semantic version;
+- the PWA updates/reloads when a newer version is deployed.
+
+## Deployment tags
+
+Successful workflow deployments create:
+
+```text
+deploy/development/vX.Y.Z
+deploy/test/vX.Y.Z
+deploy/production/vX.Y.Z
+```
+
+Do not move or reuse these tags. They are the deployment-version registry.
+
+If a deployment succeeds but tag creation fails, verify the environment before retrying because the Code Site may already have changed.
 
 ## Capture environment-generated metadata
 
@@ -62,4 +103,4 @@ Before setting `FieldService/EnableWriteDemo=true`:
 
 ## Production
 
-Use the `production` GitHub Environment with required reviewers. A production deploy should always correspond to a reviewed commit on `main` (or a release tag if you adopt tag promotion).
+Use the `production` GitHub Environment with required reviewers. A production deploy should always correspond to a reviewed commit and a known application version.

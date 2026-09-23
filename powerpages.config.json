@@ -7,6 +7,9 @@
     "assets/*.js",
     "assets/*.css",
     "registerSW.js",
-    "manifest.webmanifest"
+    "sw.js",
+    "workbox-*.js",
+    "manifest.webmanifest",
+    "version.json"
   ]
 }
