@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 test('loads and reaches the mocked Server Logic endpoint', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /Field Service offline-first boilerplate/i })).toBeVisible()
-  await expect(page.getByText('Backend reachable')).toBeVisible()
+  await expect(page.getByTestId('backend-status')).toHaveText('reachable')
 })
 
 test('reacts to offline and online browser state', async ({ page, context }) => {

@@ -83,7 +83,7 @@ export function App() {
           <h2>Central sync status</h2>
           <dl>
             <div><dt>Network</dt><dd data-testid="network-status">{syncState.online ? 'Online' : 'Offline'}</dd></div>
-            <div><dt>Backend</dt><dd>{backend}</dd></div>
+            <div><dt>Backend</dt><dd data-testid="backend-status">{backend}</dd></div>
             <div><dt>Sync engine</dt><dd>{syncState.running ? 'Synchronizing' : 'Idle'}</dd></div>
             <div><dt>Pending outbox</dt><dd>{syncState.pending}</dd></div>
             <div><dt>Last trigger</dt><dd>{syncState.lastReason || '—'}</dd></div>
@@ -147,7 +147,7 @@ export function App() {
       {message && <p className="message">{message}</p>}
       <footer>
         <span>
-          Writes to Field Service remain backend-feature-flagged until security and licensing review is complete.
+          v{__APP_VERSION__} · {__BUILD_SHA__.slice(0, 7)} · Writes to Field Service remain backend-feature-flagged until security and licensing review is complete.
         </span>
       </footer>
     </main>
