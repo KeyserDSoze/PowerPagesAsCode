@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/powerpages.config.json",
+  "siteName": "PowerPagesAsCode",
+  "compiledPath": "dist",
+  "defaultLandingPage": "index.html",
+  "bundleFilePatterns": [
+    "assets/*.js",
+    "assets/*.css",
+    "registerSW.js",
+    "manifest.webmanifest"
+  ]
+}
