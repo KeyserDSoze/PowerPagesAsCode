@@ -2,7 +2,9 @@
   "name": "power-pages-as-code",
   "version": "0.0.1",
   "private": true,
-  "workspaces": ["src/frontend"],
+  "workspaces": [
+    "src/frontend"
+  ],
   "scripts": {
     "bootstrap": "node scripts/bootstrap.mjs",
     "dev": "npm run dev --workspace ./src/frontend",
@@ -19,12 +21,14 @@
     "version:check": "node scripts/check-version.mjs",
     "version:print": "node scripts/read-version.mjs",
     "version:bump": "node scripts/bump-version.mjs",
-    "check": "npm run version:check && npm run brand:check && npm run contracts:validate && npm run lint && npm run typecheck && npm run backend:sync && npm run backend:validate",
+    "check": "npm run version:check && npm run brand:check && npm run contracts:validate && npm run lint && npm run typecheck && npm run backend:validate",
     "test": "npm run test --workspace ./src/frontend",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

@@ -29,7 +29,14 @@ function validateDraft(draft: WorkOrderExecutionDraft): WorkOrderExecutionDraft 
 }
 
 export async function saveWorkOrderExecution(input: WorkOrderExecutionDraft): Promise<string> {
-  const draft = validateDraft(input)
+  const validated = validateDraft(input)
+  const cached = validated.baseModifiedOn
+    ? undefined
+    : await db.workOrders.get(validated.workOrderId)
+  const draft: WorkOrderExecutionDraft = {
+    ...validated,
+    baseModifiedOn: validated.baseModifiedOn ?? cached?.modifiedOn,
+  }
   const operationId = crypto.randomUUID()
   const now = new Date().toISOString()
 
@@ -172,17 +179,27 @@ export async function markOperationTransportFailure(
   retryable: boolean,
 ): Promise<void> {
   const current = await db.outbox.get(row.id)
-  const attemptCount = current?.attemptCount ?? row.attemptCount + 1
-  const exhausted = attemptCount >= appConfig.sync.maxAttempts
+  const recordedAttemptCount = current?.attemptCount ?? row.attemptCount + 1
+  const authenticationFailure = kind === 'authentication'
+
+  // Authentication is not an operation-quality failure. Do not consume the
+  // finite business retry budget while the Power Pages session is expired.
+  const effectiveAttemptCount = authenticationFailure
+    ? row.attemptCount
+    : recordedAttemptCount
+  const exhausted = !authenticationFailure && effectiveAttemptCount >= appConfig.sync.maxAttempts
   const shouldRetry = retryable && !exhausted
 
-  const nextAttemptAt = shouldRetry
-    ? new Date(Date.now() + computeRetryDelayMs(attemptCount)).toISOString()
+  // Authentication retries are event-driven (focus/manual/sign-in recovery),
+  // not timer-driven, so a signed-out device cannot spin until it blocks.
+  const nextAttemptAt = shouldRetry && !authenticationFailure
+    ? new Date(Date.now() + computeRetryDelayMs(effectiveAttemptCount)).toISOString()
     : undefined
 
   await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
     await db.outbox.update(row.id, {
       status: shouldRetry ? 'failed' : 'blocked',
+      attemptCount: effectiveAttemptCount,
       errorKind: kind,
       nextAttemptAt,
       lastError: exhausted ? `${error} Maximum attempts reached.` : error,

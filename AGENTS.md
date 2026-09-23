@@ -115,7 +115,7 @@ npm run backend:sync
 npm run backend:validate
 ```
 
-CI rejects snapshot drift and forbidden Server Logic patterns.
+CI rejects snapshot drift and forbidden Server Logic patterns. The validation command MUST run against the committed deployment snapshot before any build-time `backend:sync`; do not hide stale generated files by synchronizing them inside the static-check command.
 
 ## Configuration rules
 
@@ -218,10 +218,11 @@ Retryable transport examples:
 
 - network failure;
 - HTTP 408/425/429;
-- HTTP 5xx;
-- expired authentication session (retry after auth recovery).
+- HTTP 5xx.
 
-Retry uses bounded exponential backoff with jitter.
+Retry uses bounded exponential backoff with jitter and a finite operation-attempt budget.
+
+An expired Power Pages/Entra session is different: authentication failures MUST NOT consume the finite business retry budget and MUST NOT run on an automatic retry timer. Keep the outbox item retryable and wait for a user-driven lifecycle trigger (sign-in/focus/manual sync) after authentication recovery.
 
 Do not retry validation or ordinary permanent authorization failures forever.
 
@@ -241,7 +242,7 @@ Remote read cache and local editable drafts are separate so pull refreshes do no
 
 ## Conflicts
 
-Offline drafts may include `baseModifiedOn`.
+Offline drafts carry `baseModifiedOn`. When a feature saves a Work Order execution draft without explicitly supplying it, the offline repository captures the current cached Work Order `modifiedOn` automatically.
 
 Before applying a command, the backend compares this with the current Dataverse `modifiedon`. A mismatch returns a non-retryable `CONFLICT`.
 
@@ -279,7 +280,11 @@ Enable only after provisioning the table:
 Sync/IdempotencyEnabled = true
 ```
 
-Production Field Service writes require persistent idempotency.
+The built-in Dataverse idempotency table is a conservative deduplication skeleton, not a transactional exactly-once guarantee: the business update and idempotency completion record are separate operations. Completed/rejected results can be replayed, and alternate-key races are handled conservatively, but an unknown in-progress outcome requires reconciliation.
+
+For strict exactly-once semantics, move the command and idempotency state transition into a Dataverse Custom API/plugin (or equivalent server-side transaction boundary).
+
+Production Field Service writes require persistent idempotency plus an explicit policy for ambiguous/in-progress outcomes.
 
 ## API contracts
 
@@ -339,6 +344,8 @@ When enabled, `/diagnostics` exposes operational metadata only:
 - recent structured operational events.
 
 Do not add business record content, tokens or credentials to diagnostics.
+
+Diagnostics are enabled by default in local/development/test builds and disabled by default when `VITE_APP_ENVIRONMENT=production`. Production enablement must be explicit through `VITE_DIAGNOSTICS_ENABLED=true`.
 
 ## Frontend versioning and forced updates
 

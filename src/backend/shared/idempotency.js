@@ -3,6 +3,12 @@
 // Disabled by default. To enable it, provision a custom Dataverse table with
 // an alternate key on the operation-id column and configure the settings below.
 //
+// IMPORTANT: this store is a conservative deduplication skeleton, not a
+// transactional exactly-once guarantee. The business write and idempotency
+// completion record are separate Dataverse operations. For strict exactly-once
+// semantics implement the command inside a Dataverse Custom API/plugin that
+// owns the transaction.
+//
 // Default table contract:
 // EntitySetName: ppa_syncoperations
 // Primary key:   ppa_syncoperationid
@@ -49,6 +55,27 @@ const IdempotencyStore = {
     };
   },
 
+  parseExisting: function (settings, existing) {
+    let savedResponse = null;
+    const responseText = existing[settings.responseColumn];
+
+    if (responseText) {
+      try {
+        savedResponse = JSON.parse(responseText);
+      } catch (error) {
+        savedResponse = null;
+      }
+    }
+
+    return {
+      enabled: true,
+      duplicate: true,
+      recordId: existing[settings.idColumn],
+      status: existing[settings.statusColumn],
+      response: savedResponse
+    };
+  },
+
   find: function (operationId) {
     if (!IdempotencyStore.enabled()) return null;
 
@@ -81,37 +108,29 @@ const IdempotencyStore = {
     const existing = IdempotencyStore.find(operationId);
 
     if (existing) {
-      let savedResponse = null;
-      const responseText = existing[settings.responseColumn];
-
-      if (responseText) {
-        try {
-          savedResponse = JSON.parse(responseText);
-        } catch (error) {
-          savedResponse = null;
-        }
-      }
-
-      return {
-        enabled: true,
-        duplicate: true,
-        recordId: existing[settings.idColumn],
-        status: existing[settings.statusColumn],
-        response: savedResponse
-      };
+      return IdempotencyStore.parseExisting(settings, existing);
     }
 
     const createPayload = {};
     createPayload[settings.operationColumn] = operationId;
     createPayload[settings.statusColumn] = "processing";
 
-    RuntimeDataverse.assertSuccess(
-      Server.Connector.Dataverse.CreateRecord(
-        settings.entitySetName,
-        JSON.stringify(createPayload)
-      ),
-      "Create idempotency record"
+    const createResponse = Server.Connector.Dataverse.CreateRecord(
+      settings.entitySetName,
+      JSON.stringify(createPayload)
     );
+
+    if (!createResponse || !createResponse.IsSuccessStatusCode) {
+      // A concurrent request may have won the alternate-key race. Re-read the
+      // operation before surfacing the create error.
+      const raced = IdempotencyStore.find(operationId);
+      if (raced) return IdempotencyStore.parseExisting(settings, raced);
+
+      RuntimeDataverse.assertSuccess(
+        createResponse,
+        "Create idempotency record"
+      );
+    }
 
     const created = IdempotencyStore.find(operationId);
     if (!created) {
@@ -149,7 +168,9 @@ const IdempotencyStore = {
 
     const settings = IdempotencyStore.settings();
     const payload = {};
-    payload[settings.statusColumn] = "failed";
+    payload[settings.statusColumn] = errorPayload && errorPayload.retryable
+      ? "failed"
+      : "rejected";
     payload[settings.responseColumn] = JSON.stringify(errorPayload);
 
     RuntimeDataverse.assertSuccess(
