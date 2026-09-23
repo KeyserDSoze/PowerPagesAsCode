@@ -99,23 +99,27 @@ const next = {
   cicdAppName: readArg('--cicd-app-name') || slug + '-cicd',
 }
 
+// Only technical identifiers are replaced generically.
+// Display names are updated only in known branded locations so repository URLs,
+// Microsoft product/domain terms and historical boilerplate references stay valid.
 const replacements = [
-  [current.displayName, next.displayName],
-  [current.packageName, next.packageName],
-  [current.packageScope, next.packageScope],
   [current.frontendPackageName, next.frontendPackageName],
-  [current.contractNamespace, next.contractNamespace],
   [current.cicdAppName, next.cicdAppName],
+  [current.contractNamespace, next.contractNamespace],
+  [current.packageScope, next.packageScope],
+  [current.packageName, next.packageName],
 ]
+  .filter((pair) => pair[0] && pair[0] !== pair[1])
+  .sort((a, b) => b[0].length - a[0].length)
 
-if (allowDatabaseRename) replacements.push([current.databaseName, next.databaseName])
+if (allowDatabaseRename && current.databaseName !== next.databaseName) {
+  replacements.push([current.databaseName, next.databaseName])
+}
 
-const replaceText = (text) => {
+const replaceTechnicalIdentifiers = (text) => {
   let output = text
   for (const pair of replacements) {
-    const from = pair[0]
-    const to = pair[1]
-    if (from && from !== to) output = output.split(from).join(to)
+    output = output.split(pair[0]).join(pair[1])
   }
   return output
 }
@@ -166,7 +170,6 @@ try {
 }
 
 const textFiles = [
-  path.join(root, 'README.md'),
   path.join(root, 'AGENTS.md'),
   path.join(root, 'SECURITY.md'),
   path.join(root, 'CONTRIBUTING.md'),
@@ -178,7 +181,7 @@ const textFiles = [
 for (const fullPath of textFiles) {
   try {
     const before = await readFile(fullPath, 'utf8')
-    const after = replaceText(before)
+    const after = replaceTechnicalIdentifiers(before)
     if (before !== after) {
       if (!dryRun) await writeFile(fullPath, after)
       console.log((dryRun ? '[dry-run] ' : '') + 'rebranded ' + path.relative(root, fullPath))
@@ -186,6 +189,37 @@ for (const fullPath of textFiles) {
   } catch {
     // Optional text files are ignored.
   }
+}
+
+// README title is a known product-brand location. Do not globally replace the
+// display name because docs can contain the source repository URL.
+try {
+  const readmePath = path.join(root, 'README.md')
+  const before = await readFile(readmePath, 'utf8')
+  let after = replaceTechnicalIdentifiers(before)
+  const expectedHeading = '# ' + current.displayName
+  if (after.startsWith(expectedHeading)) {
+    after = '# ' + next.displayName + after.slice(expectedHeading.length)
+  }
+  if (before !== after) {
+    if (!dryRun) await writeFile(readmePath, after)
+    console.log((dryRun ? '[dry-run] ' : '') + 'rebranded README.md')
+  }
+} catch {
+  // README is expected, but keep the utility resilient.
+}
+
+// Update the brand schema title explicitly while preserving its relative path
+// and allowing the technical namespace replacement above.
+try {
+  const schemaPath = path.join(root, 'schemas', 'brand-config.schema.json')
+  const schema = JSON.parse(await readFile(schemaPath, 'utf8'))
+  schema.title = next.displayName + ' brand configuration'
+  schema.$id = replaceTechnicalIdentifiers(schema.$id)
+  if (!dryRun) await writeFile(schemaPath, JSON.stringify(schema, null, 2) + '\n')
+  console.log((dryRun ? '[dry-run] ' : '') + 'updated schemas/brand-config.schema.json title')
+} catch {
+  // Schema validation will catch a missing/invalid schema later.
 }
 
 console.log('')
@@ -197,7 +231,7 @@ console.log('  siteName:            ' + current.siteName + ' -> ' + next.siteNam
 console.log('  PWA name:            ' + current.pwaName + ' -> ' + next.pwaName)
 console.log('  IndexedDB:           ' + current.databaseName + ' -> ' + next.databaseName)
 console.log('')
-console.log('Next: npm run brand:check && npm run check && npm test && npm run build')
+console.log('Next: npm ci && npm run brand:check && npm run check && npm test && npm run build')
 console.log('')
 console.log('This script does NOT rename GitHub repositories, Power Platform environments,')
 console.log('existing Power Pages records, Entra app registrations, Dataverse publisher/schema')

@@ -401,6 +401,16 @@ GitHub Environments:
 
 Production should require reviewers.
 
+Push-to-`main` deployment is opt-in through the repository-level Actions variable:
+
+```text
+POWER_PAGES_AUTO_DEPLOY = true
+```
+
+A fresh template repository MUST remain safe before Power Platform/OIDC configuration: CI may run, but automatic deployment must stay skipped until explicitly enabled. Manual workflow-dispatch deployment remains available.
+
+The deploy build MUST set `VITE_APP_ENVIRONMENT` to the selected target environment so diagnostics report the correct environment.
+
 Do not manually move/reuse deployment tags.
 
 ## Repository security

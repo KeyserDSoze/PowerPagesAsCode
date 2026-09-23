@@ -64,6 +64,8 @@ The repository can also be configured as a GitHub Template Repository so new pro
 
 Branding is centralized in `brand.config.json`; see [docs/17-rebranding-and-template-reuse.md](docs/17-rebranding-and-template-reuse.md).
 
+Automatic Power Pages deployment from `main` is deliberately disabled in a fresh template repository. After DEV OIDC/environment setup is proven, set repository Actions variable `POWER_PAGES_AUTO_DEPLOY=true`. Manual environment deployment remains available through GitHub Actions.
+
 ## Quick validation
 
 Requires Node.js 22+.

@@ -75,6 +75,8 @@ The frontend consumes branding through Vite instead of duplicating names through
 
 ## What it deliberately does not rename
 
+The script intentionally avoids a global replacement of the display name in all Markdown. For example, the source boilerplate clone URL remains valid after a rebrand. CI contains a real rebrand smoke job that applies a representative Contoso rename, runs `npm ci`, checks the brand, compiles/tests the application, and verifies that the original source repository URL was not corrupted.
+
 The script does not mutate tenant/external resources:
 
 - GitHub repository name;

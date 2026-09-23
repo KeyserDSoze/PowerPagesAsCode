@@ -45,6 +45,27 @@ Recommended:
 - each environment can point to a different Power Platform environment;
 - for stronger isolation, each environment can also use a distinct Entra CI/CD application/client ID.
 
+## Automatic development deployment switch
+
+Automatic deployment from a push to `main` is disabled by default for a newly-created boilerplate repository.
+
+After the `development` environment, OIDC/FIC and deployment variables are working, create a **repository-level GitHub Actions variable**:
+
+```text
+POWER_PAGES_AUTO_DEPLOY = true
+```
+
+This is a control flag, not a secret.
+
+When absent or not equal to `true`:
+
+- CI still runs;
+- CodeQL/security checks still run;
+- manual `workflow_dispatch` deployment still works;
+- push-to-`main` Power Pages deployment is skipped.
+
+This avoids false/red deployment runs while a new project is still being bootstrapped.
+
 ## Values required by deploy.yml
 
 Create these under:

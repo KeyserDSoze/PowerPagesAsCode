@@ -14,6 +14,7 @@
 10. Configure the GitHub OIDC CI/CD application and Dataverse Application User.
 11. Configure GitHub Environments and variables.
 12. Configure required reviewers for production.
+13. After manual development deployment succeeds, optionally set repository variable `POWER_PAGES_AUTO_DEPLOY=true` to enable automatic DEV deployment on relevant pushes to `main`.
 
 ## Release version
 
@@ -36,7 +37,8 @@ Commit the version bump together with the release changes.
 ## First local validation
 
 ```bash
-npm install
+npm ci
+npm run doctor
 npm run check
 npm test
 npm run test:e2e
@@ -58,6 +60,8 @@ pac pages upload-code-site --rootPath .
 ```
 
 For normal releases prefer the GitHub Actions deployment workflow because it also enforces/records the application version.
+
+A fresh boilerplate repository should first use the manual `workflow_dispatch` deployment to `development`. After that path works end-to-end, enable `POWER_PAGES_AUTO_DEPLOY=true` if automatic DEV deployment is desired.
 
 Then verify:
 

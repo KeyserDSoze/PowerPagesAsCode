@@ -180,6 +180,16 @@ POWER_PLATFORM_CLIENT_ID
 
 The current deployment uses OIDC/Federated Identity Credentials, so **no client secret is required in GitHub**.
 
+A fresh repository intentionally does **not** auto-deploy on every merge yet. Manual `workflow_dispatch` deployment is always available after the three environment variables and OIDC/FIC are configured.
+
+When development deployment is proven, create this **repository-level Actions variable**:
+
+```text
+POWER_PAGES_AUTO_DEPLOY = true
+```
+
+Only then will relevant pushes to `main` automatically deploy to the `development` GitHub Environment. This prevents a newly-created template repository from showing a red deployment workflow before Power Platform has even been configured.
+
 Follow `06-environments-oidc-secrets.md` for the complete setup.
 
 ## 9. Before the first real Field Service write

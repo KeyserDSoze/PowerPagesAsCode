@@ -38,6 +38,10 @@ concurrency:
 
 jobs:
   deploy:
+    # Fresh template repositories do not fail on their first merge before Power
+    # Platform is configured. Manual dispatch always works; push-to-main deploy
+    # becomes active only after POWER_PAGES_AUTO_DEPLOY=true is set.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.POWER_PAGES_AUTO_DEPLOY == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
 
@@ -61,7 +65,7 @@ jobs:
           npm test
           npm run security:audit
 
-      - name: Resolve release version and enforce bump
+      - name: Resolve release version and target environment
         shell: bash
         env:
           TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
@@ -83,7 +87,8 @@ jobs:
           echo "Deploying version ${APP_VERSION} to ${TARGET_ENVIRONMENT}"
 
       - name: Build frontend and Server Logic snapshot
-        run: npm run build
+        shell: bash
+        run: VITE_APP_ENVIRONMENT="$TARGET_ENVIRONMENT" npm run build
 
       - name: Verify built version
         shell: bash
