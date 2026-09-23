@@ -33,6 +33,7 @@ const forbidden = [
   ['Object.getPrototypeOf', /\bObject\s*\.\s*getPrototypeOf\b/],
   ['Object.setPrototypeOf', /\bObject\s*\.\s*setPrototypeOf\b/],
   ['Symbol.for', /\bSymbol\s*\.\s*for\b/],
+  ['prototype keyword', /\bprototype\b/],
   ['__proto__', /__proto__/],
   ['Proxy(', /\bProxy\s*\(/],
   ['Reflect.', /\bReflect\s*\./],
