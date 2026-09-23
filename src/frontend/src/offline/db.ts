@@ -44,7 +44,7 @@ export interface SyncStateRow {
   value: string
 }
 
-export const db = new Dexie('PowerPagesFieldService') as Dexie & {
+export const db = new Dexie(__APP_DB_NAME__) as Dexie & {
   workOrders: EntityTable<WorkOrderCacheRow, 'id'>
   workOrderExecutions: EntityTable<WorkOrderExecutionRow, 'id'>
   outbox: EntityTable<OutboxRow, 'id'>

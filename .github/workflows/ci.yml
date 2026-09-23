@@ -25,6 +25,18 @@ jobs:
       - name: Repository doctor
         run: npm run doctor
 
+      - name: Rebrand script dry run
+        run: |
+          npm run rebrand -- \
+            --name "PowerPagesAsCode" \
+            --slug "power-pages-as-code" \
+            --site-name "PowerPagesAsCode" \
+            --pwa-name "Power Pages Field Service" \
+            --short-name "Field Service" \
+            --scope "@powerpages-as-code" \
+            --cicd-app-name "power-pages-as-code-cicd" \
+            --dry-run
+
       - name: Static checks
         run: npm run check
 
@@ -49,3 +61,38 @@ jobs:
 
       - name: E2E tests
         run: npm run test:e2e
+
+  rebrand-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply representative rebrand
+        run: |
+          npm run rebrand -- \
+            --name "Contoso Field Operations" \
+            --slug "contoso-field-operations" \
+            --site-name "Contoso Field Operations" \
+            --pwa-name "Contoso Field Operations" \
+            --short-name "Contoso Field" \
+            --scope "@contoso" \
+            --cicd-app-name "contoso-field-operations-cicd"
+
+      - name: Verify source repository URL was not rebranded
+        shell: bash
+        run: grep -F "https://github.com/KeyserDSoze/PowerPagesAsCode.git" docs/00-getting-started.md
+
+      - name: Install rebranded lockfile
+        run: npm ci
+
+      - name: Validate rebranded project
+        run: |
+          npm run brand:check
+          npm run check
+          npm test
+          npm run build

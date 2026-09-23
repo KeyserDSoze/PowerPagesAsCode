@@ -26,7 +26,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
       return (
         <main className="shell">
           <article className="card">
-            <p className="eyebrow">PowerPagesAsCode</p>
+            <p className="eyebrow">{__APP_DISPLAY_NAME__}</p>
             <h1>Application error</h1>
             <p>
               The application hit an unexpected error. Your offline data has not been intentionally removed.

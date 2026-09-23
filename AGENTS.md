@@ -55,8 +55,40 @@ src/frontend/src/version/           forced application update/version monitor
 src/backend/shared/                 runtime-safe shared backend prelude
 src/backend/<endpoint>/             human-maintained Server Logic endpoint source
 tests/e2e/                          Playwright
+brand.config.json                   centralized product/PWA branding
 powerpages.config.json              PAC Code Site configuration
 ```
+
+## Boilerplate bootstrap and branding
+
+For a new solution:
+
+1. create a repository from this boilerplate (prefer a GitHub Template Repository);
+2. rebrand before the first deployment;
+3. run the automated bootstrap;
+4. configure GitHub Environments/OIDC;
+5. configure the Power Pages environment;
+6. start domain-specific development.
+
+Commands:
+
+```bash
+npm run rebrand -- --name "Contoso Field Operations" --scope "@contoso"
+npm run brand:check
+npm run bootstrap
+```
+
+`brand.config.json` is the source of truth for product/PWA naming. Do not introduce new hard-coded product-brand strings in React or build configuration when they can be derived from the brand config.
+
+The rebrand script may update repository-controlled names, but it MUST NOT silently rename external tenant resources such as Entra apps, GitHub repositories, Power Platform environments, existing Power Pages records, Dataverse publisher prefixes or custom domains.
+
+The IndexedDB database name is a persistent data identifier. Rebranding MUST preserve it unless the operator explicitly uses `--rename-database` with a migration-aware decision. Renaming it after devices contain offline data can make existing local data invisible to the new app version.
+
+Read:
+
+- `docs/00-getting-started.md`
+- `docs/06-environments-oidc-secrets.md`
+- `docs/17-rebranding-and-template-reuse.md`
 
 ## Backend runtime rule
 
@@ -369,6 +401,16 @@ GitHub Environments:
 
 Production should require reviewers.
 
+Push-to-`main` deployment is opt-in through the repository-level Actions variable:
+
+```text
+POWER_PAGES_AUTO_DEPLOY = true
+```
+
+A fresh template repository MUST remain safe before Power Platform/OIDC configuration: CI may run, but automatic deployment must stay skipped until explicitly enabled. Manual workflow-dispatch deployment remains available.
+
+The deploy build MUST set `VITE_APP_ENVIRONMENT` to the selected target environment so diagnostics report the correct environment.
+
 Do not manually move/reuse deployment tags.
 
 ## Repository security
@@ -448,6 +490,7 @@ Never make a material change to authentication, offline sync, contracts, retry, 
 ## Current baseline
 
 - Version: `0.0.1`
+- Branding: centralized in `brand.config.json`; automated rebrand available
 - Node: `22`
 - Frontend: React/TypeScript/Vite PWA
 - Offline DB: Dexie/IndexedDB schema v3
