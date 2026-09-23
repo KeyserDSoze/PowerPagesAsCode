@@ -1,0 +1,5 @@
+adx_serverlogic_adx_webrole: []
+description: 'Incremental pull endpoint for cached Field Service Work Orders. Assign an appropriate Web Role and table permissions before use.'
+display_name: 'Field Service Pull'
+id: 7564f76c-b53d-4ed8-bb18-c30339f49ca8
+name: field-service-pull

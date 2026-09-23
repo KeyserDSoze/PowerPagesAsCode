@@ -1,0 +1,5 @@
+adx_serverlogic_adx_webrole: []
+description: 'Authenticated health endpoint. Assign an appropriate Web Role before use.'
+display_name: 'Health'
+id: 22fd4a0e-00de-4f59-a6d5-42e1883a88ab
+name: health

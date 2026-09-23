@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://powerpagesascode.local/contracts/field-service-pull.response.schema.json",
+  "title": "Field Service pull response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["records", "hasMore"],
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": ["string", "null"] },
+          "systemStatus": { "type": ["number", "null"] },
+          "modifiedOn": { "type": ["string", "null"], "format": "date-time" }
+        }
+      }
+    },
+    "nextCursor": { "type": ["string", "null"], "format": "date-time" },
+    "hasMore": { "type": "boolean" }
+  }
+}

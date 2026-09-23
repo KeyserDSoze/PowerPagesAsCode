@@ -1,0 +1,119 @@
+name: Deploy Power Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/frontend/**"
+      - "src/backend/**"
+      - "contracts/**"
+      - ".powerpages-site/**"
+      - "scripts/**"
+      - "powerpages.config.json"
+      - "package.json"
+      - "package-lock.json"
+      - "AGENTS.md"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment / Power Platform target
+        required: true
+        default: development
+        type: choice
+        options:
+          - development
+          - test
+          - production
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: power-pages-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate and test
+        run: |
+          npm run doctor
+          npm run check
+          npm test
+          npm run security:audit
+
+      - name: Resolve release version and enforce bump
+        shell: bash
+        env:
+          TARGET_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+        run: |
+          APP_VERSION="$(npm run --silent version:print)"
+          DEPLOY_TAG="deploy/${TARGET_ENVIRONMENT}/v${APP_VERSION}"
+
+          git fetch --force --tags
+
+          if git show-ref --verify --quiet "refs/tags/${DEPLOY_TAG}"; then
+            echo "Version ${APP_VERSION} has already been deployed to ${TARGET_ENVIRONMENT}."
+            echo "Bump the version first, for example: npm run version:bump -- patch"
+            exit 1
+          fi
+
+          echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
+          echo "TARGET_ENVIRONMENT=${TARGET_ENVIRONMENT}" >> "$GITHUB_ENV"
+          echo "DEPLOY_TAG=${DEPLOY_TAG}" >> "$GITHUB_ENV"
+          echo "Deploying version ${APP_VERSION} to ${TARGET_ENVIRONMENT}"
+
+      - name: Build frontend and Server Logic snapshot
+        run: npm run build
+
+      - name: Verify built version
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'); const v=JSON.parse(fs.readFileSync('dist/version.json')); if(v.version !== process.argv[1]) { console.error('Built version mismatch'); process.exit(1) }" "$APP_VERSION"
+
+      - name: Install Power Platform CLI
+        uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Validate deployment variables
+        shell: bash
+        env:
+          POWER_PLATFORM_ENVIRONMENT_URL: ${{ vars.POWER_PLATFORM_ENVIRONMENT_URL }}
+          POWER_PLATFORM_TENANT_ID: ${{ vars.POWER_PLATFORM_TENANT_ID }}
+          POWER_PLATFORM_CLIENT_ID: ${{ vars.POWER_PLATFORM_CLIENT_ID }}
+        run: |
+          test -n "$POWER_PLATFORM_ENVIRONMENT_URL" || (echo "Missing POWER_PLATFORM_ENVIRONMENT_URL" && exit 1)
+          test -n "$POWER_PLATFORM_TENANT_ID" || (echo "Missing POWER_PLATFORM_TENANT_ID" && exit 1)
+          test -n "$POWER_PLATFORM_CLIENT_ID" || (echo "Missing POWER_PLATFORM_CLIENT_ID" && exit 1)
+
+      - name: Authenticate with GitHub OIDC
+        shell: bash
+        run: |
+          pac auth create             --environment "${{ vars.POWER_PLATFORM_ENVIRONMENT_URL }}"             --tenant "${{ vars.POWER_PLATFORM_TENANT_ID }}"             --applicationId "${{ vars.POWER_PLATFORM_CLIENT_ID }}"             --githubFederated
+
+      - name: Upload Code Site
+        run: pac pages upload-code-site --rootPath .
+
+      - name: Record successful deployment version
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$DEPLOY_TAG" -m "Deployed PowerPagesAsCode v$APP_VERSION to $TARGET_ENVIRONMENT"
+          git push origin "refs/tags/$DEPLOY_TAG"

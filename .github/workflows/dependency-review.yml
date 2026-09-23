@@ -1,0 +1,26 @@
+name: Dependency review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Review dependency changes
+        id: dependency-review
+        continue-on-error: true
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+      - name: Explain unavailable dependency graph
+        if: steps.dependency-review.outcome == 'failure'
+        run: |
+          echo "::warning::Dependency Review could not run. Enable GitHub Dependency Graph in repository Security settings, then remove continue-on-error from this workflow."

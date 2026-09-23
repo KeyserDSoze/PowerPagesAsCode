@@ -1,0 +1,5 @@
+adx_serverlogic_adx_webrole: []
+description: 'Field Service facade example. Assign a Web Role and table permissions; writes remain disabled by default.'
+display_name: 'Field Service facade'
+id: df541d5d-202f-4d82-9f4d-c0e0a25acbb5
+name: field-service
