@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const endpoints = ['health', 'field-service']
+const endpoints = ['health', 'field-service', 'field-service-sync']
 const forbidden = [
   ['require(', /\brequire\s*\(/],
   ['dynamic import', /\bimport\s*\(/],

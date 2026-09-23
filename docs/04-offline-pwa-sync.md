@@ -1,58 +1,133 @@
-# Offline PWA and synchronization
+# Offline PWA and centralized synchronization
 
-## Two different offline concerns
+## Architectural rule
 
-The service worker caches the **application shell**: HTML, JavaScript, CSS and static assets.
+Features and React components do **not** call Field Service directly.
 
-IndexedDB stores **business working data** and the synchronization outbox. Do not use Cache Storage as the business database.
-
-## IndexedDB schema
-
-The starter uses Dexie and defines:
-
-- `workOrders`: small local Work Order cache.
-- `outbox`: pending mutations.
-- `syncState`: reserved for watermarks/cursors.
-
-Every local mutation should update the local projection and append an outbox item in the same IndexedDB transaction.
-
-## Outbox pattern
-
-An outbox record contains a client-generated operation ID, record ID, operation name, payload, creation timestamp, attempt count and status.
-
-The client operation ID must eventually become an **idempotency key** on the backend. The starter sends it but does not yet persist processed IDs server-side. Before production writes, add a Dataverse custom table or Custom API strategy that guarantees duplicate delivery is safe.
-
-## Reconnect flow
+All local writes follow one route:
 
 ```text
-user edits offline
-  -> IndexedDB transaction
-       -> update local projection
-       -> insert outbox operation
-  -> UI immediately reflects local state
-
-browser comes online
-  -> health/API reachability check
-  -> process outbox oldest first
-  -> server validates operation
-  -> Dataverse update
-  -> remove successful outbox item
-  -> retain failed item + error
+React feature
+  -> Offline Repository
+      -> IndexedDB local copy
+      -> IndexedDB transactional outbox
+  -> Sync Coordinator
+      -> Field Service Sync Transport
+      -> /_api/serverlogics/field-service-sync
+      -> Dataverse / Dynamics 365 Field Service
 ```
 
-`navigator.onLine` only reports browser network state. Production code should also use a real server reachability check before large synchronization batches.
+This makes synchronization an infrastructure concern rather than logic duplicated across screens.
 
-## Conflict policy
+## IndexedDB is a local operational copy
 
-The starter does not silently implement last-write-wins. Define a policy per aggregate:
+The PWA service worker caches the application shell. IndexedDB stores the business data needed to continue working.
 
-- optimistic concurrency using Dataverse ETags/version data;
+The example uses:
+
+- `workOrders`: read-side Work Order cache.
+- `workOrderExecutions`: the technician's current local editable copy.
+- `outbox`: immutable-ish synchronization commands waiting for delivery.
+- `syncState`: reserved for cursors/watermarks.
+
+The local execution row contains the values the technician intends to send to Field Service, plus sync metadata such as `dirty`, `syncing`, `error` and `clean`.
+
+## Example
+
+A technician reaches a Work Order while offline and records:
+
+```json
+{
+  "workOrderId": "11111111-1111-4111-8111-111111111111",
+  "status": "completed",
+  "technicianNote": "Replaced filter and verified normal pressure.",
+  "followUpRequired": false,
+  "arrivedOn": "2026-09-23T08:00:00.000Z",
+  "completedOn": "2026-09-23T09:10:00.000Z"
+}
+```
+
+`saveWorkOrderExecution(...)` performs one IndexedDB transaction:
+
+1. upsert the local `workOrderExecutions` copy;
+2. append an outbox item with a unique `operationId`.
+
+The UI can therefore show the saved work immediately even with zero connectivity.
+
+## Central Sync Coordinator
+
+`syncCoordinator.ts` is the only component that decides **when** queued changes are sent.
+
+Current triggers:
+
+- application startup when online;
+- browser `online` event;
+- window focus;
+- explicit manual sync.
+
+It also serializes sync execution so multiple screens/triggers cannot start concurrent outbox flushes.
+
+The coordinator sends batches of at most 20 operations. Each backend result is processed individually:
+
+- `applied`: remove the outbox row; mark the local draft clean when no newer operation remains;
+- `rejected`: retain the outbox row and mark the local draft as error;
+- transport/server failure: retain data for a future retry.
+
+## Backend business mapping
+
+The browser sends a business command named `submitWorkOrderExecution`, not an arbitrary Dataverse patch.
+
+The example Server Logic maps the command to Field Service Work Order fields:
+
+| Local value | Field Service field |
+| --- | --- |
+| `status: inProgress` | `msdyn_systemstatus = 690970002` |
+| `status: completed` | `msdyn_systemstatus = 690970003` |
+| `technicianNote` | `msdyn_followupnote` (demo field; deprecated in Field Service) |
+| `followUpRequired` | `msdyn_followuprequired` (demo field; deprecated) |
+| `arrivedOn` | `msdyn_firstarrivedon` |
+| `completedOn` | `msdyn_completedon` |
+
+For a production application, prefer your approved domain fields/custom columns when deprecated fields are not appropriate.
+
+Microsoft Work Order reference:
+https://learn.microsoft.com/dynamics365/field-service/developer/reference/entities/msdyn_workorder
+
+## Transactional outbox
+
+The important invariant is:
+
+> A local business change must never exist without its corresponding sync command.
+
+That is why local-copy update and outbox insert occur in the same IndexedDB transaction.
+
+## Idempotency
+
+The client generates an `operationId` and reuses it for retries. Production must persist processed operation IDs on the server (for example in a small custom Dataverse table or a Custom API implementation) before enabling write scenarios.
+
+Without backend idempotency the transport is **at least once**, not exactly once.
+
+## Conflicts
+
+The local model includes `baseModifiedOn` as the start of an optimistic-concurrency strategy, but the sample does not yet reject stale versions.
+
+Choose a policy per command:
+
+- ETag/version-based optimistic concurrency;
 - server-wins;
-- client-wins for explicitly safe fields;
-- manual conflict resolution for operationally important fields.
+- client-wins only for safe fields;
+- manual resolution for important operational changes.
 
-For Field Service, status transitions and booking/work-order completion should generally be modeled as explicit commands rather than generic patches.
+Status transitions should stay explicit business commands rather than generic patches.
 
-## PWA installability
+## What must not happen
 
-The project uses `vite-plugin-pwa` and Workbox. Power Pages Code Sites require the PWA manifest/service worker behavior to be implemented in the SPA rather than relying on the classic Power Pages PWA toggle.
+Do not let individual React screens:
+
+- call Dataverse directly for writes;
+- invent their own retry loops;
+- delete outbox records before server confirmation;
+- store client secrets/tokens in IndexedDB;
+- mark a record synchronized just because `navigator.onLine` is true.
+
+The centralized layers exist specifically to prevent these patterns.
