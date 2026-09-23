@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './db'
 import {
-  markOperationFailed,
+  markOperationRejected,
   markOperationSucceeded,
   recoverInterruptedSyncs,
   saveWorkOrderExecution,
@@ -60,7 +60,7 @@ describe('central offline Work Order repository', () => {
     expect((await db.workOrderExecutions.get(workOrderId))?.syncStatus).toBe('dirty')
   })
 
-  it('does not mark a draft clean while another operation for the same Work Order failed', async () => {
+  it('does not mark a draft clean while another operation for the same Work Order is blocked', async () => {
     const workOrderId = '11111111-1111-4111-8111-111111111111'
     const first = await saveWorkOrderExecution({
       workOrderId,
@@ -75,10 +75,10 @@ describe('central offline Work Order repository', () => {
       followUpRequired: false,
     })
 
-    await markOperationFailed(first, workOrderId, 'Rejected transition')
+    await markOperationRejected(first, workOrderId, 'Rejected transition')
     await markOperationSucceeded(second, workOrderId)
 
     expect((await db.workOrderExecutions.get(workOrderId))?.syncStatus).toBe('error')
-    expect((await db.outbox.get(first))?.status).toBe('failed')
+    expect((await db.outbox.get(first))?.status).toBe('blocked')
   })
 })

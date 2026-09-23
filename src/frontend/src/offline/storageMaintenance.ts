@@ -12,13 +12,27 @@ export interface StorageSnapshot {
 export async function getStorageSnapshot(): Promise<StorageSnapshot> {
   if (!navigator.storage) return {}
 
-  const [persisted, estimate] = await Promise.all([
-    navigator.storage.persisted?.().catch(() => false),
-    navigator.storage.estimate?.().catch(() => ({})),
-  ])
+  let persisted = false
+  let estimate: StorageEstimate = {}
 
-  const usage = estimate?.usage
-  const quota = estimate?.quota
+  try {
+    if (navigator.storage.persisted) {
+      persisted = await navigator.storage.persisted()
+    }
+  } catch {
+    persisted = false
+  }
+
+  try {
+    if (navigator.storage.estimate) {
+      estimate = await navigator.storage.estimate()
+    }
+  } catch {
+    estimate = {}
+  }
+
+  const usage = estimate.usage
+  const quota = estimate.quota
 
   return {
     persisted,

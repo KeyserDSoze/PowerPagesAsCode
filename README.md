@@ -41,49 +41,20 @@ The end-user browser does **not** receive a Dataverse service principal secret o
 
 ## Included infrastructure
 
-The starter includes:
-
-- React + TypeScript + Vite;
-- PWA/Workbox installability and forced version updates;
-- Dexie/IndexedDB local cache, editable drafts and transactional outbox;
-- centralized Sync Coordinator with push + pull;
-- exponential retry/backoff with jitter and blocked permanent failures;
-- optimistic conflict detection;
-- optional Dataverse-backed idempotency abstraction;
-- CSRF-aware Power Pages Server Logic client;
-- structured frontend/backend operational logging;
-- React Error Boundary;
-- `/diagnostics` runtime diagnostics;
-- JSON Schema API contracts;
-- Vitest + Playwright;
-- CodeQL, Dependency Review, Dependabot and CODEOWNERS;
-- GitHub Actions deployment through PAC CLI + OIDC/FIC;
-- semantic version gate starting at `0.0.1`;
-- architecture/runbook/ADR documentation;
-- `AGENTS.md` for human/LLM engineering context.
-
-## Offline example
-
-The technician can save a Work Order execution draft offline with status, note, follow-up flag, arrival and completion timestamps. The local copy and outbox command are committed atomically.
-
-When connectivity is available the coordinator pushes due commands, reconciles results, then pulls modified Work Orders into the local read cache using a cursor.
-
-See [docs/12-offline-sync-reference-implementation.md](docs/12-offline-sync-reference-implementation.md) and [docs/15-sync-pull-retry-conflicts-idempotency.md](docs/15-sync-pull-retry-conflicts-idempotency.md).
+The starter includes React/TypeScript/Vite, PWA/Workbox installability and forced version updates, Dexie/IndexedDB local cache + drafts + transactional outbox, centralized push/pull synchronization, retry/backoff, conflict detection, optional Dataverse-backed idempotency, CSRF-aware Server Logic transport, structured logging, Error Boundary, `/diagnostics`, JSON Schema contracts, Vitest/Playwright, CodeQL/Dependabot/CODEOWNERS and PAC CLI OIDC deployment.
 
 ## Quick start
 
 Requires Node.js 22+.
 
 ```bash
-npm install
+npm ci
 npm run doctor
 npm run check
 npm test
 npm run test:e2e
 npm run build
 ```
-
-Once `package-lock.json` is committed, use `npm ci`.
 
 ## Repository layout
 
@@ -102,13 +73,7 @@ powerpages.config.json      PAC CLI Code Site configuration
 
 ## Before production writes
 
-Do not enable `FieldService/EnableWriteDemo` until:
-
-1. Web Roles/Table Permissions are correct;
-2. the exact Dynamics 365 licensing scenario is approved;
-3. the Dataverse idempotency table and alternate key are provisioned;
-4. integration tests run against non-production;
-5. conflict/rollback policy is agreed.
+Do not enable `FieldService/EnableWriteDemo` until Web Roles/Table Permissions are correct, the Dynamics 365 licensing scenario is approved, the Dataverse idempotency table/alternate key exists, non-production integration tests pass, and conflict/rollback policy is agreed.
 
 ## Documentation
 
