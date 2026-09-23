@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://powerpagesascode.local/contracts/field-service-sync.response.schema.json",
+  "title": "Field Service sync response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results"],
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operationId", "recordId", "status"],
+        "properties": {
+          "operationId": { "type": "string" },
+          "recordId": { "type": "string" },
+          "status": { "enum": ["applied", "rejected"] },
+          "code": { "type": "string" },
+          "retryable": { "type": "boolean" },
+          "error": { "type": "string" }
+        }
+      }
+    }
+  }
+}

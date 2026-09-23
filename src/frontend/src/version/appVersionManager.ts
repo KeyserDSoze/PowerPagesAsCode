@@ -1,3 +1,6 @@
+import { appConfig } from '../config/appConfig'
+import { appLogger } from '../observability/appLogger'
+
 export interface AppVersionManifest {
   version: string
   buildSha: string
@@ -14,8 +17,6 @@ export interface AppVersionState {
 
 type Listener = (state: AppVersionState) => void
 type UpdateServiceWorker = (reloadPage?: boolean) => Promise<void>
-
-const CHECK_INTERVAL_MS = 60_000
 
 class AppVersionManager {
   private started = false
@@ -44,7 +45,10 @@ class AppVersionManager {
     window.addEventListener('online', this.onOnline)
     window.addEventListener('focus', this.onFocus)
     document.addEventListener('visibilitychange', this.onVisibility)
-    this.timer = window.setInterval(() => void this.checkNow(), CHECK_INTERVAL_MS)
+    this.timer = window.setInterval(
+      () => void this.checkNow(),
+      appConfig.versioning.checkIntervalMs,
+    )
 
     void this.checkNow()
   }
@@ -87,10 +91,18 @@ class AppVersionManager {
       })
 
       if (updateRequired) {
+        appLogger.warn('version.update_required', {
+          details: {
+            currentVersion: __APP_VERSION__,
+            remoteVersion: remote.version,
+          },
+        })
         await this.forceUpdate(remote)
       }
-    } catch {
-      // Version checks must never block normal/offline app usage.
+    } catch (error) {
+      appLogger.warn('version.check_failed', {
+        details: { message: error instanceof Error ? error.message : String(error) },
+      })
       this.setState({ lastCheckedAt: new Date().toISOString() })
     } finally {
       this.setState({ checking: false })
@@ -143,15 +155,6 @@ class AppVersionManager {
       updateRequired: true,
     })
 
-    window.dispatchEvent(
-      new CustomEvent('app-version:update-required', {
-        detail: {
-          currentVersion: __APP_VERSION__,
-          remoteVersion: remote.version,
-        },
-      }),
-    )
-
     let controllerChanged = false
     const reloadOnControllerChange = () => {
       controllerChanged = true
@@ -168,13 +171,14 @@ class AppVersionManager {
       const registration = await navigator.serviceWorker?.getRegistration()
       await registration?.update()
       await this.updateServiceWorker?.(true)
-    } catch {
-      // The cache-busted navigation below is the final fallback.
+    } catch (error) {
+      appLogger.warn('version.service_worker_update_failed', {
+        details: { message: error instanceof Error ? error.message : String(error) },
+      })
     }
 
     window.setTimeout(() => {
       if (controllerChanged) return
-
       const url = new URL(window.location.href)
       url.searchParams.set('__appVersion', remote.version)
       window.location.replace(url.toString())

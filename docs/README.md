@@ -17,5 +17,8 @@ The documents are intentionally split by concern so architecture, operations, se
 | [11-service-to-service.md](11-service-to-service.md) | Optional service-to-service integration pattern and guardrails |
 | [12-offline-sync-reference-implementation.md](12-offline-sync-reference-implementation.md) | End-to-end local copy, outbox, batch sync and reconciliation |
 | [13-versioning-and-forced-updates.md](13-versioning-and-forced-updates.md) | Semantic versioning, deployment tags and mandatory PWA updates |
+| [14-configuration-observability-diagnostics.md](14-configuration-observability-diagnostics.md) | Central config, structured logging, Error Boundary, diagnostics and storage |
+| [15-sync-pull-retry-conflicts-idempotency.md](15-sync-pull-retry-conflicts-idempotency.md) | Pull cursor, retry/backoff, conflict and idempotency model |
+| [16-repository-security-and-developer-experience.md](16-repository-security-and-developer-experience.md) | CodeQL, Dependabot, CODEOWNERS, Node/tooling and branch policy |
 
 Architecture decisions are recorded separately under [adr/](adr/). All coding agents must also read the repository root [AGENTS.md](../AGENTS.md).

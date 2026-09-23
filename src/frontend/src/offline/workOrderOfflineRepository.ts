@@ -1,8 +1,11 @@
+import { appConfig } from '../config/appConfig'
 import type { WorkOrderExecutionDraft } from '../domain/workOrderExecution'
 import { toSyncPayload } from '../domain/workOrderExecution'
-import { db, type OutboxRow } from './db'
+import { db, type OutboxRow, type SyncErrorKind, type WorkOrderCacheRow } from './db'
+import { computeRetryDelayMs } from './retryPolicy'
 
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const WORK_ORDER_CURSOR_KEY = 'fieldService.workOrders.cursor'
 
 function validateDraft(draft: WorkOrderExecutionDraft): WorkOrderExecutionDraft {
   const workOrderId = draft.workOrderId.trim()
@@ -22,16 +25,10 @@ function validateDraft(draft: WorkOrderExecutionDraft): WorkOrderExecutionDraft 
     }
   }
 
-  return {
-    ...draft,
-    workOrderId,
-    technicianNote,
-  }
+  return { ...draft, workOrderId, technicianNote }
 }
 
-export async function saveWorkOrderExecution(
-  input: WorkOrderExecutionDraft,
-): Promise<string> {
+export async function saveWorkOrderExecution(input: WorkOrderExecutionDraft): Promise<string> {
   const draft = validateDraft(input)
   const operationId = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -72,6 +69,7 @@ export async function recoverInterruptedSyncs(): Promise<number> {
     for (const row of stuck) {
       await db.outbox.update(row.id, {
         status: 'pending',
+        nextAttemptAt: undefined,
         lastError: 'Recovered after an interrupted synchronization.',
       })
       await db.workOrderExecutions.update(row.recordId, {
@@ -85,12 +83,20 @@ export async function recoverInterruptedSyncs(): Promise<number> {
 }
 
 export async function getPendingBatch(
-  limit = 20,
+  limit = appConfig.sync.pushBatchSize,
   excludeIds: ReadonlySet<string> = new Set(),
 ): Promise<OutboxRow[]> {
+  const now = Date.now()
   const rows = await db.outbox.orderBy('createdAt').toArray()
+
   return rows
-    .filter((row) => (row.status === 'pending' || row.status === 'failed') && !excludeIds.has(row.id))
+    .filter((row) => {
+      if (excludeIds.has(row.id)) return false
+      if (row.status !== 'pending' && row.status !== 'failed') return false
+      if (row.attemptCount >= appConfig.sync.maxAttempts) return false
+      if (!row.nextAttemptAt) return true
+      return Date.parse(row.nextAttemptAt) <= now
+    })
     .slice(0, limit)
 }
 
@@ -100,7 +106,9 @@ export async function markBatchSyncing(rows: OutboxRow[]): Promise<void> {
       await db.outbox.update(row.id, {
         status: 'syncing',
         attemptCount: row.attemptCount + 1,
+        nextAttemptAt: undefined,
         lastError: undefined,
+        errorKind: undefined,
       })
       await db.workOrderExecutions.update(row.recordId, {
         syncStatus: 'syncing',
@@ -110,10 +118,7 @@ export async function markBatchSyncing(rows: OutboxRow[]): Promise<void> {
   })
 }
 
-export async function markOperationSucceeded(
-  operationId: string,
-  recordId: string,
-): Promise<void> {
+export async function markOperationSucceeded(operationId: string, recordId: string): Promise<void> {
   await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
     await db.outbox.delete(operationId)
 
@@ -127,29 +132,30 @@ export async function markOperationSucceeded(
       return
     }
 
-    const failed = remainingForRecord.find((row) => row.status === 'failed')
-    if (failed) {
+    const blocked = remainingForRecord.find((row) => row.status === 'blocked')
+    if (blocked) {
       await db.workOrderExecutions.update(recordId, {
         syncStatus: 'error',
-        lastSyncError: failed.lastError || 'A queued operation failed.',
+        lastSyncError: blocked.lastError || 'A queued operation is blocked.',
       })
-    } else {
-      await db.workOrderExecutions.update(recordId, {
-        syncStatus: 'dirty',
-        lastSyncError: undefined,
-      })
+      return
     }
+
+    await db.workOrderExecutions.update(recordId, { syncStatus: 'dirty' })
   })
 }
 
-export async function markOperationFailed(
+export async function markOperationRejected(
   operationId: string,
   recordId: string,
   error: string,
+  kind: SyncErrorKind = 'permanent',
 ): Promise<void> {
   await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
     await db.outbox.update(operationId, {
-      status: 'failed',
+      status: 'blocked',
+      errorKind: kind,
+      nextAttemptAt: undefined,
       lastError: error,
     })
     await db.workOrderExecutions.update(recordId, {
@@ -159,6 +165,63 @@ export async function markOperationFailed(
   })
 }
 
+export async function markOperationTransportFailure(
+  row: OutboxRow,
+  error: string,
+  kind: SyncErrorKind,
+  retryable: boolean,
+): Promise<void> {
+  const current = await db.outbox.get(row.id)
+  const attemptCount = current?.attemptCount ?? row.attemptCount + 1
+  const exhausted = attemptCount >= appConfig.sync.maxAttempts
+  const shouldRetry = retryable && !exhausted
+
+  const nextAttemptAt = shouldRetry
+    ? new Date(Date.now() + computeRetryDelayMs(attemptCount)).toISOString()
+    : undefined
+
+  await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
+    await db.outbox.update(row.id, {
+      status: shouldRetry ? 'failed' : 'blocked',
+      errorKind: kind,
+      nextAttemptAt,
+      lastError: exhausted ? `${error} Maximum attempts reached.` : error,
+    })
+    await db.workOrderExecutions.update(row.recordId, {
+      syncStatus: 'error',
+      lastSyncError: error,
+    })
+  })
+}
+
 export async function pendingOperationCount(): Promise<number> {
-  return db.outbox.count()
+  return db.outbox.where('status').anyOf('pending', 'failed', 'syncing').count()
+}
+
+export async function blockedOperationCount(): Promise<number> {
+  return db.outbox.where('status').equals('blocked').count()
+}
+
+export async function getNextRetryAt(): Promise<string | undefined> {
+  const rows = await db.outbox.where('status').equals('failed').toArray()
+  return rows
+    .map((row) => row.nextAttemptAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()[0]
+}
+
+export async function getWorkOrderPullCursor(): Promise<string | undefined> {
+  return (await db.syncState.get(WORK_ORDER_CURSOR_KEY))?.value
+}
+
+export async function applyPulledWorkOrders(
+  records: WorkOrderCacheRow[],
+  nextCursor: string | undefined,
+): Promise<void> {
+  await db.transaction('rw', db.workOrders, db.syncState, async () => {
+    if (records.length > 0) await db.workOrders.bulkPut(records)
+    if (nextCursor) {
+      await db.syncState.put({ key: WORK_ORDER_CURSOR_KEY, value: nextCursor })
+    }
+  })
 }

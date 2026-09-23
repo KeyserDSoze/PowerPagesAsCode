@@ -5,14 +5,15 @@ import type {
 } from '../domain/workOrderExecution'
 
 export type LocalSyncStatus = 'clean' | 'dirty' | 'syncing' | 'error'
-export type OutboxStatus = 'pending' | 'syncing' | 'failed'
+export type OutboxStatus = 'pending' | 'syncing' | 'failed' | 'blocked'
+export type SyncErrorKind = 'transient' | 'permanent' | 'conflict' | 'authentication'
 
 export interface WorkOrderCacheRow {
   id: string
   name?: string
   systemStatus?: number
   modifiedOn?: string
-  fetchedAt?: string
+  fetchedAt: string
   updatedLocallyAt: string
 }
 
@@ -33,6 +34,8 @@ export interface OutboxRow {
   createdAt: string
   attemptCount: number
   status: OutboxStatus
+  nextAttemptAt?: string
+  errorKind?: SyncErrorKind
   lastError?: string
 }
 
@@ -59,4 +62,15 @@ db.version(2).stores({
   workOrderExecutions: 'id, workOrderId, syncStatus, localUpdatedAt',
   outbox: 'id, aggregate, recordId, status, createdAt',
   syncState: 'key',
+})
+
+db.version(3).stores({
+  workOrders: 'id, modifiedOn, fetchedAt, updatedLocallyAt',
+  workOrderExecutions: 'id, workOrderId, syncStatus, localUpdatedAt',
+  outbox: 'id, aggregate, recordId, status, createdAt, nextAttemptAt, errorKind',
+  syncState: 'key',
+}).upgrade(async (transaction) => {
+  await transaction.table('workOrders').toCollection().modify((row) => {
+    if (!row.fetchedAt) row.fetchedAt = new Date().toISOString()
+  })
 })

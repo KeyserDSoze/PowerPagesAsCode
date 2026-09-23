@@ -1,7 +1,6 @@
-// Power Pages Server Logic runtime: ECMAScript 2023.
-// Keep this file free of Node.js modules and browser-only APIs.
-
 function get() {
+  RuntimeLogger.info("health.requested", {});
+
   return JSON.stringify({
     status: "ok",
     activityId: Server.Context.ActivityId,

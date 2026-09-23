@@ -11,6 +11,16 @@ type Envelope = {
 
 export { SessionExpiredError }
 
+export class ServerLogicError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ServerLogicError'
+  }
+}
+
 export async function callServerLogic<T>(
   endpoint: string,
   options: {
@@ -27,14 +37,25 @@ export async function callServerLogic<T>(
   })
 
   const text = await response.text()
-  if (!response.ok) throw new Error(text || `Server Logic request failed (${response.status}).`)
+  if (!response.ok) {
+    throw new ServerLogicError(text || `Server Logic request failed (${response.status}).`, response.status)
+  }
 
-  const envelope = JSON.parse(text) as Envelope
+  let envelope: Envelope
+  try {
+    envelope = JSON.parse(text) as Envelope
+  } catch {
+    throw new ServerLogicError(`Invalid Server Logic response from '${endpoint}'.`, response.status)
+  }
+
   const success = envelope.success ?? envelope.Success ?? false
   const error = envelope.error ?? envelope.Error
   const data = envelope.data ?? envelope.Data
 
-  if (!success) throw new Error(error || `Server Logic endpoint '${endpoint}' failed.`)
+  if (!success) {
+    throw new ServerLogicError(error || `Server Logic endpoint '${endpoint}' failed.`, response.status)
+  }
+
   if (data === null || data === undefined || data === '') return undefined as T
   return JSON.parse(data) as T
 }

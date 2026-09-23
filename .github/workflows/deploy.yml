@@ -6,6 +6,7 @@ on:
     paths:
       - "src/frontend/**"
       - "src/backend/**"
+      - "contracts/**"
       - ".powerpages-site/**"
       - "scripts/**"
       - "powerpages.config.json"
@@ -39,21 +40,24 @@ jobs:
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm install
 
       - name: Validate and test
         run: |
+          npm run doctor
           npm run check
           npm test
+          npm run security:audit
 
       - name: Resolve release version and enforce bump
         shell: bash

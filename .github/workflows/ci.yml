@@ -12,20 +12,27 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm install
+
+      - name: Repository doctor
+        run: npm run doctor
 
       - name: Static checks
         run: npm run check
 
       - name: Unit tests
         run: npm test
+
+      - name: Dependency audit
+        run: npm run security:audit
 
       - name: Production build
         run: npm run build

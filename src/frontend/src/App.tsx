@@ -86,13 +86,15 @@ export function App() {
             <div><dt>Backend</dt><dd data-testid="backend-status">{backend}</dd></div>
             <div><dt>Sync engine</dt><dd>{syncState.running ? 'Synchronizing' : 'Idle'}</dd></div>
             <div><dt>Pending outbox</dt><dd>{syncState.pending}</dd></div>
-            <div><dt>Last trigger</dt><dd>{syncState.lastReason || '—'}</dd></div>
+            <div><dt>Blocked outbox</dt><dd>{syncState.blocked}</dd></div>
+            <div><dt>Last pull rows</dt><dd>{syncState.lastPullCount ?? '—'}</dd></div>
           </dl>
           <div className="actions">
             <button onClick={() => void checkBackend()}>Health check</button>
             <button onClick={() => void syncCoordinator.syncNow('manual')} disabled={!syncState.online || syncState.running}>
               Sync now
             </button>
+            <a className="button-link" href="/diagnostics">Diagnostics</a>
             {backend === 'login-required' && <a className="button-link" href={signInUrl}>Sign in with Entra ID</a>}
           </div>
           {syncState.lastError && <p className="error">{syncState.lastError}</p>}
