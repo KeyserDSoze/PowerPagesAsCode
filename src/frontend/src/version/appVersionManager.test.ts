@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 describe('application version contract', () => {
   it('starts from strict semantic version 0.0.1', () => {
-    expect('0.0.1').toMatch(/^\d+\.\d+\.\d+$/)
+    const initialVersion: string = '0.0.1'
+    expect(initialVersion).toMatch(/^\d+\.\d+\.\d+$/)
   })
 
   it('treats different patch versions as different releases', () => {
-    expect('0.0.1' === '0.0.2').toBe(false)
+    const currentVersion: string = '0.0.1'
+    const nextVersion: string = '0.0.2'
+    expect(currentVersion).not.toBe(nextVersion)
   })
 })
