@@ -71,8 +71,8 @@ export function App() {
   return (
     <main className="shell">
       <header>
-        <p className="eyebrow">PowerPagesAsCode</p>
-        <h1>Field Service offline-first boilerplate</h1>
+        <p className="eyebrow">{__APP_DISPLAY_NAME__}</p>
+        <h1>{__APP_SHORT_NAME__} offline-first boilerplate</h1>
         <p>
           React PWA → centralized IndexedDB store/outbox → Sync Coordinator → Power Pages Server Logic → Field Service.
         </p>

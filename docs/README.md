@@ -4,6 +4,7 @@ The documents are intentionally split by concern so architecture, operations, se
 
 | Document | Purpose |
 | --- | --- |
+| [00-getting-started.md](00-getting-started.md) | From template/clone to local bootstrap and first Power Pages deployment |
 | [01-architecture.md](01-architecture.md) | Components, boundaries and data flow |
 | [02-authentication-security.md](02-authentication-security.md) | Entra ID, Power Pages session, Web Roles, CSRF and identity separation |
 | [03-server-logic.md](03-server-logic.md) | Server Logic runtime, source/deploy folders and endpoint conventions |
@@ -20,5 +21,6 @@ The documents are intentionally split by concern so architecture, operations, se
 | [14-configuration-observability-diagnostics.md](14-configuration-observability-diagnostics.md) | Central config, structured logging, Error Boundary, diagnostics and storage |
 | [15-sync-pull-retry-conflicts-idempotency.md](15-sync-pull-retry-conflicts-idempotency.md) | Pull cursor, retry/backoff, conflict and idempotency model |
 | [16-repository-security-and-developer-experience.md](16-repository-security-and-developer-experience.md) | CodeQL, Dependabot, CODEOWNERS, Node/tooling and branch policy |
+| [17-rebranding-and-template-reuse.md](17-rebranding-and-template-reuse.md) | Central branding configuration, rebrand script and GitHub template workflow |
 
 Architecture decisions are recorded separately under [adr/](adr/). All coding agents must also read the repository root [AGENTS.md](../AGENTS.md).

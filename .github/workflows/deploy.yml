@@ -7,8 +7,10 @@ on:
       - "src/frontend/**"
       - "src/backend/**"
       - "contracts/**"
+      - "schemas/**"
       - ".powerpages-site/**"
       - "scripts/**"
+      - "brand.config.json"
       - "powerpages.config.json"
       - "package.json"
       - "package-lock.json"
@@ -105,7 +107,11 @@ jobs:
       - name: Authenticate with GitHub OIDC
         shell: bash
         run: |
-          pac auth create             --environment "${{ vars.POWER_PLATFORM_ENVIRONMENT_URL }}"             --tenant "${{ vars.POWER_PLATFORM_TENANT_ID }}"             --applicationId "${{ vars.POWER_PLATFORM_CLIENT_ID }}"             --githubFederated
+          pac auth create \
+            --environment "${{ vars.POWER_PLATFORM_ENVIRONMENT_URL }}" \
+            --tenant "${{ vars.POWER_PLATFORM_TENANT_ID }}" \
+            --applicationId "${{ vars.POWER_PLATFORM_CLIENT_ID }}" \
+            --githubFederated
 
       - name: Upload Code Site
         run: pac pages upload-code-site --rootPath .
@@ -115,5 +121,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$DEPLOY_TAG" -m "Deployed PowerPagesAsCode v$APP_VERSION to $TARGET_ENVIRONMENT"
+          git tag -a "$DEPLOY_TAG" -m "Deployed application v$APP_VERSION to $TARGET_ENVIRONMENT"
           git push origin "refs/tags/$DEPLOY_TAG"

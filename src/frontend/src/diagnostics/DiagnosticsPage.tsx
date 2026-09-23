@@ -56,7 +56,7 @@ export function DiagnosticsPage() {
     <main className="shell">
       <header>
         <p className="eyebrow">Diagnostics</p>
-        <h1>PowerPagesAsCode runtime</h1>
+        <h1>{appConfig.app.displayName} runtime</h1>
         <p>No business payloads, credentials or access tokens are displayed here.</p>
       </header>
 
@@ -64,6 +64,7 @@ export function DiagnosticsPage() {
         <article className="card">
           <h2>Build</h2>
           <dl>
+            <div><dt>Application</dt><dd>{appConfig.app.displayName}</dd></div>
             <div><dt>Version</dt><dd>{appConfig.app.version}</dd></div>
             <div><dt>SHA</dt><dd>{appConfig.app.buildSha.slice(0, 12)}</dd></div>
             <div><dt>Build time</dt><dd>{appConfig.app.buildTime}</dd></div>
@@ -94,6 +95,7 @@ export function DiagnosticsPage() {
         <article className="card">
           <h2>Local storage</h2>
           <dl>
+            <div><dt>IndexedDB name</dt><dd>{appConfig.app.databaseName}</dd></div>
             <div><dt>IndexedDB schema</dt><dd>{snapshot?.dbVersion ?? '—'}</dd></div>
             <div><dt>Work Orders cached</dt><dd>{snapshot?.workOrders ?? '—'}</dd></div>
             <div><dt>Local drafts</dt><dd>{snapshot?.drafts ?? '—'}</dd></div>

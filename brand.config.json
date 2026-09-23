@@ -1,0 +1,14 @@
+{
+  "$schema": "./schemas/brand-config.schema.json",
+  "displayName": "PowerPagesAsCode",
+  "siteName": "PowerPagesAsCode",
+  "pwaName": "Power Pages Field Service",
+  "shortName": "Field Service",
+  "description": "Offline-first Power Pages PWA boilerplate",
+  "packageName": "power-pages-as-code",
+  "packageScope": "@powerpages-as-code",
+  "frontendPackageName": "@powerpages-as-code/frontend",
+  "contractNamespace": "powerpagesascode.local",
+  "databaseName": "PowerPagesFieldService",
+  "cicdAppName": "powerpages-as-code-cicd"
+}

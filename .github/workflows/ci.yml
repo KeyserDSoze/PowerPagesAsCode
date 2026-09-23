@@ -25,6 +25,10 @@ jobs:
       - name: Repository doctor
         run: npm run doctor
 
+      - name: Rebrand script dry run
+        run: |
+          npm run rebrand --             --name "PowerPagesAsCode"             --slug "power-pages-as-code"             --site-name "PowerPagesAsCode"             --pwa-name "Power Pages Field Service"             --short-name "Field Service"             --scope "@powerpages-as-code"             --cicd-app-name "powerpages-as-code-cicd"             --dry-run
+
       - name: Static checks
         run: npm run check
 

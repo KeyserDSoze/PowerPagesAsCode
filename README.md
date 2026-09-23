@@ -43,7 +43,28 @@ The end-user browser does **not** receive a Dataverse service principal secret o
 
 The starter includes React/TypeScript/Vite, PWA/Workbox installability and forced version updates, Dexie/IndexedDB local cache + drafts + transactional outbox, centralized push/pull synchronization, retry/backoff, conflict detection, optional Dataverse-backed idempotency, CSRF-aware Server Logic transport, structured logging, Error Boundary, `/diagnostics`, JSON Schema contracts, Vitest/Playwright, CodeQL/Dependabot/CODEOWNERS and PAC CLI OIDC deployment.
 
-## Quick start
+## Start a new project from this boilerplate
+
+Read [docs/00-getting-started.md](docs/00-getting-started.md) first.
+
+Typical sequence:
+
+```bash
+# optional but recommended before first deployment
+npm run rebrand -- --name "Contoso Field Operations" --scope "@contoso"
+
+# install locked dependencies and validate the baseline
+npm run bootstrap
+
+# local development
+npm run dev
+```
+
+The repository can also be configured as a GitHub Template Repository so new projects can use **Use this template** without inheriting this repository's commit history.
+
+Branding is centralized in `brand.config.json`; see [docs/17-rebranding-and-template-reuse.md](docs/17-rebranding-and-template-reuse.md).
+
+## Quick validation
 
 Requires Node.js 22+.
 
@@ -68,6 +89,7 @@ src/frontend/               React PWA and shared client infrastructure
 src/backend/                Server Logic endpoints + build-time shared prelude
 tests/e2e/                  Playwright
 AGENTS.md                   persistent engineering context for coding agents
+brand.config.json           centralized product/PWA branding
 powerpages.config.json      PAC CLI Code Site configuration
 ```
 
@@ -77,4 +99,9 @@ Do not enable `FieldService/EnableWriteDemo` until Web Roles/Table Permissions a
 
 ## Documentation
 
-Start at [docs/README.md](docs/README.md).
+Start with:
+
+- [Getting started](docs/00-getting-started.md)
+- [GitHub Environments, OIDC and secrets](docs/06-environments-oidc-secrets.md)
+- [Rebranding and template reuse](docs/17-rebranding-and-template-reuse.md)
+- [Full documentation index](docs/README.md)

@@ -7,9 +7,27 @@ const rootPackage = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 ) as { version: string }
 
+const brand = JSON.parse(
+  readFileSync(new URL('../../brand.config.json', import.meta.url), 'utf8'),
+) as {
+  displayName: string
+  pwaName: string
+  shortName: string
+  description: string
+  databaseName: string
+}
+
 const appVersion = process.env.APP_VERSION || rootPackage.version
 const buildSha = process.env.GITHUB_SHA || 'local'
 const buildTime = new Date().toISOString()
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 
 const versionManifest = JSON.stringify(
   {
@@ -21,8 +39,15 @@ const versionManifest = JSON.stringify(
   2,
 )
 
-const appVersionPlugin = (): Plugin => ({
-  name: 'app-version-manifest',
+const applicationMetadataPlugin = (): Plugin => ({
+  name: 'application-metadata',
+
+  transformIndexHtml(html) {
+    return html.replace(
+      /<title>.*?<\/title>/,
+      '<title>' + escapeHtml(brand.pwaName) + '</title>',
+    )
+  },
 
   configureServer(server) {
     server.middlewares.use('/version.json', (_request, response) => {
@@ -47,17 +72,20 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion),
     __BUILD_SHA__: JSON.stringify(buildSha),
     __BUILD_TIME__: JSON.stringify(buildTime),
+    __APP_DISPLAY_NAME__: JSON.stringify(brand.displayName),
+    __APP_SHORT_NAME__: JSON.stringify(brand.shortName),
+    __APP_DB_NAME__: JSON.stringify(brand.databaseName),
   },
   plugins: [
     react(),
-    appVersionPlugin(),
+    applicationMetadataPlugin(),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['icons/app-icon.svg'],
       manifest: {
-        name: 'Power Pages Field Service',
-        short_name: 'Field Service',
-        description: 'Offline-first Power Pages PWA boilerplate',
+        name: brand.pwaName,
+        short_name: brand.shortName,
+        description: brand.description,
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',

@@ -10,6 +10,9 @@ const booleanFromEnv = (value: string | undefined, fallback: boolean): boolean =
 
 export const appConfig = Object.freeze({
   app: Object.freeze({
+    displayName: __APP_DISPLAY_NAME__,
+    shortName: __APP_SHORT_NAME__,
+    databaseName: __APP_DB_NAME__,
     version: __APP_VERSION__,
     buildSha: __BUILD_SHA__,
     buildTime: __BUILD_TIME__,
