@@ -64,7 +64,9 @@ focus ───┼──> syncNow() -> one in-flight run only
 manual ──┘
 ```
 
-The coordinator reads pending outbox rows, marks them syncing, calls the transport, and reconciles each result.
+At startup the coordinator first calls `recoverInterruptedSyncs()`. Any outbox row left in `syncing` because the app/browser/device stopped during a previous request is moved back to a retryable `pending` state.
+
+The coordinator reads pending outbox rows, marks them syncing, calls the transport, and reconciles each result. A transport failure marks the currently active batch as failed instead of leaving rows stuck forever.
 
 ## 6. Transport
 
@@ -126,7 +128,13 @@ Example response:
 
 Only after `applied` does the client remove the corresponding outbox row.
 
-If a newer outbox item exists for the same Work Order, the local draft remains dirty. Otherwise it becomes clean and records `lastSyncedAt`.
+If another operation still exists for the same Work Order:
+
+- a failed row keeps the local draft in `error`;
+- a pending row keeps it `dirty`;
+- only zero remaining rows allows `clean`.
+
+This prevents a newer successful request from accidentally hiding an older synchronization error.
 
 ## 9. Failure example
 
@@ -145,7 +153,17 @@ The outbox row stays in IndexedDB with `failed` status and the editable local co
 
 Nothing is lost.
 
-## 10. Production extensions
+## 10. Delivery semantics
+
+The current example is deliberately **at least once**:
+
+- browser/network failure can make the client retry;
+- the same `operationId` is retained across retries;
+- server-side persistent idempotency is still required before production writes.
+
+Recommended production design: a small Dataverse synchronization-operation table keyed by `operationId`, or a Custom API that implements equivalent deduplication.
+
+## 11. Production extensions
 
 Before production, extend this reference with:
 

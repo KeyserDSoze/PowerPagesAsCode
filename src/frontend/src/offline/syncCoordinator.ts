@@ -1,3 +1,4 @@
+import type { OutboxRow } from './db'
 import { pushFieldServiceBatch } from './fieldServiceSyncTransport'
 import {
   getPendingBatch,
@@ -5,6 +6,7 @@ import {
   markOperationFailed,
   markOperationSucceeded,
   pendingOperationCount,
+  recoverInterruptedSyncs,
 } from './workOrderOfflineRepository'
 
 export type SyncReason = 'startup' | 'online' | 'focus' | 'manual'
@@ -49,8 +51,8 @@ class SyncCoordinator {
     window.addEventListener('online', this.onOnline)
     window.addEventListener('offline', this.onOffline)
     window.addEventListener('focus', this.onFocus)
-    void this.refreshPending()
-    if (navigator.onLine) void this.syncNow('startup')
+
+    void this.bootstrap()
   }
 
   stop(): void {
@@ -90,16 +92,24 @@ class SyncCoordinator {
     return this.inFlight
   }
 
+  private async bootstrap(): Promise<void> {
+    await recoverInterruptedSyncs()
+    await this.refreshPending()
+    if (navigator.onLine) await this.syncNow('startup')
+  }
+
   private async run(reason: SyncReason): Promise<void> {
     this.setState({ online: true, running: true, lastReason: reason, lastError: undefined })
 
     const attempted = new Set<string>()
+    let activeBatch: OutboxRow[] = []
 
     try {
       while (true) {
         const batch = await getPendingBatch(20, attempted)
         if (batch.length === 0) break
 
+        activeBatch = batch
         batch.forEach((row) => attempted.add(row.id))
         await markBatchSyncing(batch)
 
@@ -116,6 +126,8 @@ class SyncCoordinator {
             await markOperationFailed(row.id, row.recordId, result.error || 'Operation rejected.')
           }
         }
+
+        activeBatch = []
       }
 
       this.setState({ lastSyncAt: new Date().toISOString() })
@@ -123,8 +135,7 @@ class SyncCoordinator {
       const message = error instanceof Error ? error.message : 'Unexpected synchronization error.'
       this.setState({ lastError: message })
 
-      const batch = await getPendingBatch(20)
-      for (const row of batch.filter((item) => item.status === 'syncing')) {
+      for (const row of activeBatch) {
         await markOperationFailed(row.id, row.recordId, message)
       }
     } finally {

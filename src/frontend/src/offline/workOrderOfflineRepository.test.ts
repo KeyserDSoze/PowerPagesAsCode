@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './db'
-import { saveWorkOrderExecution } from './workOrderOfflineRepository'
+import {
+  markOperationFailed,
+  markOperationSucceeded,
+  recoverInterruptedSyncs,
+  saveWorkOrderExecution,
+} from './workOrderOfflineRepository'
 
 describe('central offline Work Order repository', () => {
   beforeEach(async () => {
@@ -36,5 +41,44 @@ describe('central offline Work Order repository', () => {
       technicianNote: 'Done',
       followUpRequired: false,
     })).rejects.toThrow(/Completed On/)
+  })
+
+  it('recovers outbox rows left syncing after an interrupted app session', async () => {
+    const workOrderId = '11111111-1111-4111-8111-111111111111'
+    const operationId = await saveWorkOrderExecution({
+      workOrderId,
+      status: 'inProgress',
+      technicianNote: 'Working',
+      followUpRequired: false,
+    })
+
+    await db.outbox.update(operationId, { status: 'syncing' })
+    await db.workOrderExecutions.update(workOrderId, { syncStatus: 'syncing' })
+
+    expect(await recoverInterruptedSyncs()).toBe(1)
+    expect((await db.outbox.get(operationId))?.status).toBe('pending')
+    expect((await db.workOrderExecutions.get(workOrderId))?.syncStatus).toBe('dirty')
+  })
+
+  it('does not mark a draft clean while another operation for the same Work Order failed', async () => {
+    const workOrderId = '11111111-1111-4111-8111-111111111111'
+    const first = await saveWorkOrderExecution({
+      workOrderId,
+      status: 'inProgress',
+      technicianNote: 'First',
+      followUpRequired: false,
+    })
+    const second = await saveWorkOrderExecution({
+      workOrderId,
+      status: 'inProgress',
+      technicianNote: 'Second',
+      followUpRequired: false,
+    })
+
+    await markOperationFailed(first, workOrderId, 'Rejected transition')
+    await markOperationSucceeded(second, workOrderId)
+
+    expect((await db.workOrderExecutions.get(workOrderId))?.syncStatus).toBe('error')
+    expect((await db.outbox.get(first))?.status).toBe('failed')
   })
 })

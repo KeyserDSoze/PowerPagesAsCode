@@ -64,6 +64,26 @@ export async function getWorkOrderExecution(workOrderId: string) {
   return db.workOrderExecutions.get(workOrderId)
 }
 
+export async function recoverInterruptedSyncs(): Promise<number> {
+  const stuck = await db.outbox.where('status').equals('syncing').toArray()
+  if (stuck.length === 0) return 0
+
+  await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
+    for (const row of stuck) {
+      await db.outbox.update(row.id, {
+        status: 'pending',
+        lastError: 'Recovered after an interrupted synchronization.',
+      })
+      await db.workOrderExecutions.update(row.recordId, {
+        syncStatus: 'dirty',
+        lastSyncError: undefined,
+      })
+    }
+  })
+
+  return stuck.length
+}
+
 export async function getPendingBatch(
   limit = 20,
   excludeIds: ReadonlySet<string> = new Set(),
@@ -75,8 +95,6 @@ export async function getPendingBatch(
 }
 
 export async function markBatchSyncing(rows: OutboxRow[]): Promise<void> {
-  const now = new Date().toISOString()
-
   await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
     for (const row of rows) {
       await db.outbox.update(row.id, {
@@ -87,7 +105,6 @@ export async function markBatchSyncing(rows: OutboxRow[]): Promise<void> {
       await db.workOrderExecutions.update(row.recordId, {
         syncStatus: 'syncing',
         lastSyncError: undefined,
-        localUpdatedAt: now,
       })
     }
   })
@@ -100,15 +117,27 @@ export async function markOperationSucceeded(
   await db.transaction('rw', db.outbox, db.workOrderExecutions, async () => {
     await db.outbox.delete(operationId)
 
-    const remainingForRecord = await db.outbox.where('recordId').equals(recordId).count()
-    if (remainingForRecord === 0) {
+    const remainingForRecord = await db.outbox.where('recordId').equals(recordId).toArray()
+    if (remainingForRecord.length === 0) {
       await db.workOrderExecutions.update(recordId, {
         syncStatus: 'clean',
         lastSyncedAt: new Date().toISOString(),
         lastSyncError: undefined,
       })
+      return
+    }
+
+    const failed = remainingForRecord.find((row) => row.status === 'failed')
+    if (failed) {
+      await db.workOrderExecutions.update(recordId, {
+        syncStatus: 'error',
+        lastSyncError: failed.lastError || 'A queued operation failed.',
+      })
     } else {
-      await db.workOrderExecutions.update(recordId, { syncStatus: 'dirty' })
+      await db.workOrderExecutions.update(recordId, {
+        syncStatus: 'dirty',
+        lastSyncError: undefined,
+      })
     }
   })
 }
