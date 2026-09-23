@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './db'
 import {
+  markBatchSyncing,
   markOperationRejected,
   markOperationSucceeded,
+  markOperationTransportFailure,
   recoverInterruptedSyncs,
   saveWorkOrderExecution,
 } from './workOrderOfflineRepository'
 
 describe('central offline Work Order repository', () => {
   beforeEach(async () => {
+    await db.workOrders.clear()
     await db.outbox.clear()
     await db.workOrderExecutions.clear()
   })
@@ -32,6 +35,32 @@ describe('central offline Work Order repository', () => {
     expect(queued).toHaveLength(1)
     expect(queued[0]?.payload.followUpRequired).toBe(true)
     expect(queued[0]?.operation).toBe('submitWorkOrderExecution')
+  })
+
+  it('captures baseModifiedOn from the cached Work Order automatically', async () => {
+    const workOrderId = '11111111-1111-4111-8111-111111111111'
+    const modifiedOn = '2026-09-23T07:45:00.000Z'
+
+    await db.workOrders.put({
+      id: workOrderId,
+      name: 'WO-001',
+      modifiedOn,
+      fetchedAt: '2026-09-23T07:46:00.000Z',
+      updatedLocallyAt: '2026-09-23T07:46:00.000Z',
+    })
+
+    await saveWorkOrderExecution({
+      workOrderId,
+      status: 'inProgress',
+      technicianNote: 'Started work.',
+      followUpRequired: false,
+    })
+
+    const local = await db.workOrderExecutions.get(workOrderId)
+    const queued = await db.outbox.toArray()
+
+    expect(local?.baseModifiedOn).toBe(modifiedOn)
+    expect(queued[0]?.payload.baseModifiedOn).toBe(modifiedOn)
   })
 
   it('requires completion time for completed work', async () => {
@@ -58,6 +87,32 @@ describe('central offline Work Order repository', () => {
     expect(await recoverInterruptedSyncs()).toBe(1)
     expect((await db.outbox.get(operationId))?.status).toBe('pending')
     expect((await db.workOrderExecutions.get(workOrderId))?.syncStatus).toBe('dirty')
+  })
+
+  it('does not consume retry attempts while authentication is expired', async () => {
+    const workOrderId = '11111111-1111-4111-8111-111111111111'
+    const operationId = await saveWorkOrderExecution({
+      workOrderId,
+      status: 'inProgress',
+      technicianNote: 'Working',
+      followUpRequired: false,
+    })
+    const row = await db.outbox.get(operationId)
+    if (!row) throw new Error('Expected queued operation.')
+
+    await markBatchSyncing([row])
+    await markOperationTransportFailure(
+      row,
+      'Session expired.',
+      'authentication',
+      true,
+    )
+
+    const failed = await db.outbox.get(operationId)
+    expect(failed?.status).toBe('failed')
+    expect(failed?.attemptCount).toBe(0)
+    expect(failed?.nextAttemptAt).toBeUndefined()
+    expect(failed?.errorKind).toBe('authentication')
   })
 
   it('does not mark a draft clean while another operation for the same Work Order is blocked', async () => {

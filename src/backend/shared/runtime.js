@@ -47,7 +47,19 @@ const RuntimeLogger = {
       details: details || {}
     };
 
-    Server.Logger.Log(JSON.stringify(entry));
+    const message = JSON.stringify(entry);
+
+    if (level === "error") {
+      Server.Logger.Error(message);
+      return;
+    }
+
+    if (level === "warn") {
+      Server.Logger.Warn(message);
+      return;
+    }
+
+    Server.Logger.Log(message);
   },
 
   info: function (eventName, details) {

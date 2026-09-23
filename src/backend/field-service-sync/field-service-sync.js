@@ -8,13 +8,17 @@ const SYSTEM_STATUS = {
 };
 
 function assertGuid(value, name) {
-  if (!value || !GUID.test(value)) throw new Error(name + " must be a valid GUID.");
+  if (!value || !GUID.test(value)) {
+    throw runtimeError(name + " must be a valid GUID.", "VALIDATION", false);
+  }
 }
 
 function assertIsoDate(value, name) {
   if (!value) return;
   const time = new Date(value).getTime();
-  if (isNaN(time)) throw new Error(name + " must be an ISO-8601 date/time.");
+  if (isNaN(time)) {
+    throw runtimeError(name + " must be an ISO-8601 date/time.", "VALIDATION", false);
+  }
 }
 
 function assertNotStale(recordId, baseModifiedOn) {
@@ -129,7 +133,7 @@ function post() {
       idempotencyState = IdempotencyStore.begin(operation.operationId);
 
       if (idempotencyState.duplicate) {
-        if (idempotencyState.status === "completed" && idempotencyState.response) {
+        if (idempotencyState.response) {
           results.push(idempotencyState.response);
           continue;
         }
@@ -140,7 +144,7 @@ function post() {
           status: "rejected",
           code: "IDEMPOTENCY_IN_PROGRESS",
           retryable: true,
-          error: "This operation is already being processed."
+          error: "This operation is already being processed or requires reconciliation."
         });
         continue;
       }

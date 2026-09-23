@@ -51,7 +51,19 @@ const RuntimeLogger = {
       details: details || {}
     };
 
-    Server.Logger.Log(JSON.stringify(entry));
+    const message = JSON.stringify(entry);
+
+    if (level === "error") {
+      Server.Logger.Error(message);
+      return;
+    }
+
+    if (level === "warn") {
+      Server.Logger.Warn(message);
+      return;
+    }
+
+    Server.Logger.Log(message);
   },
 
   info: function (eventName, details) {
@@ -102,6 +114,12 @@ function runtimeError(message, code, retryable) {
 // Disabled by default. To enable it, provision a custom Dataverse table with
 // an alternate key on the operation-id column and configure the settings below.
 //
+// IMPORTANT: this store is a conservative deduplication skeleton, not a
+// transactional exactly-once guarantee. The business write and idempotency
+// completion record are separate Dataverse operations. For strict exactly-once
+// semantics implement the command inside a Dataverse Custom API/plugin that
+// owns the transaction.
+//
 // Default table contract:
 // EntitySetName: ppa_syncoperations
 // Primary key:   ppa_syncoperationid
@@ -148,6 +166,27 @@ const IdempotencyStore = {
     };
   },
 
+  parseExisting: function (settings, existing) {
+    let savedResponse = null;
+    const responseText = existing[settings.responseColumn];
+
+    if (responseText) {
+      try {
+        savedResponse = JSON.parse(responseText);
+      } catch (error) {
+        savedResponse = null;
+      }
+    }
+
+    return {
+      enabled: true,
+      duplicate: true,
+      recordId: existing[settings.idColumn],
+      status: existing[settings.statusColumn],
+      response: savedResponse
+    };
+  },
+
   find: function (operationId) {
     if (!IdempotencyStore.enabled()) return null;
 
@@ -180,37 +219,29 @@ const IdempotencyStore = {
     const existing = IdempotencyStore.find(operationId);
 
     if (existing) {
-      let savedResponse = null;
-      const responseText = existing[settings.responseColumn];
-
-      if (responseText) {
-        try {
-          savedResponse = JSON.parse(responseText);
-        } catch (error) {
-          savedResponse = null;
-        }
-      }
-
-      return {
-        enabled: true,
-        duplicate: true,
-        recordId: existing[settings.idColumn],
-        status: existing[settings.statusColumn],
-        response: savedResponse
-      };
+      return IdempotencyStore.parseExisting(settings, existing);
     }
 
     const createPayload = {};
     createPayload[settings.operationColumn] = operationId;
     createPayload[settings.statusColumn] = "processing";
 
-    RuntimeDataverse.assertSuccess(
-      Server.Connector.Dataverse.CreateRecord(
-        settings.entitySetName,
-        JSON.stringify(createPayload)
-      ),
-      "Create idempotency record"
+    const createResponse = Server.Connector.Dataverse.CreateRecord(
+      settings.entitySetName,
+      JSON.stringify(createPayload)
     );
+
+    if (!createResponse || !createResponse.IsSuccessStatusCode) {
+      // A concurrent request may have won the alternate-key race. Re-read the
+      // operation before surfacing the create error.
+      const raced = IdempotencyStore.find(operationId);
+      if (raced) return IdempotencyStore.parseExisting(settings, raced);
+
+      RuntimeDataverse.assertSuccess(
+        createResponse,
+        "Create idempotency record"
+      );
+    }
 
     const created = IdempotencyStore.find(operationId);
     if (!created) {
@@ -248,7 +279,9 @@ const IdempotencyStore = {
 
     const settings = IdempotencyStore.settings();
     const payload = {};
-    payload[settings.statusColumn] = "failed";
+    payload[settings.statusColumn] = errorPayload && errorPayload.retryable
+      ? "failed"
+      : "rejected";
     payload[settings.responseColumn] = JSON.stringify(errorPayload);
 
     RuntimeDataverse.assertSuccess(
@@ -272,13 +305,17 @@ const SYSTEM_STATUS = {
 };
 
 function assertGuid(value, name) {
-  if (!value || !GUID.test(value)) throw new Error(name + " must be a valid GUID.");
+  if (!value || !GUID.test(value)) {
+    throw runtimeError(name + " must be a valid GUID.", "VALIDATION", false);
+  }
 }
 
 function assertIsoDate(value, name) {
   if (!value) return;
   const time = new Date(value).getTime();
-  if (isNaN(time)) throw new Error(name + " must be an ISO-8601 date/time.");
+  if (isNaN(time)) {
+    throw runtimeError(name + " must be an ISO-8601 date/time.", "VALIDATION", false);
+  }
 }
 
 function assertNotStale(recordId, baseModifiedOn) {
@@ -393,7 +430,7 @@ function post() {
       idempotencyState = IdempotencyStore.begin(operation.operationId);
 
       if (idempotencyState.duplicate) {
-        if (idempotencyState.status === "completed" && idempotencyState.response) {
+        if (idempotencyState.response) {
           results.push(idempotencyState.response);
           continue;
         }
@@ -404,7 +441,7 @@ function post() {
           status: "rejected",
           code: "IDEMPOTENCY_IN_PROGRESS",
           retryable: true,
-          error: "This operation is already being processed."
+          error: "This operation is already being processed or requires reconciliation."
         });
         continue;
       }

@@ -8,6 +8,8 @@ const booleanFromEnv = (value: string | undefined, fallback: boolean): boolean =
   return value.toLowerCase() === 'true'
 }
 
+const appEnvironment = import.meta.env.VITE_APP_ENVIRONMENT || 'local'
+
 export const appConfig = Object.freeze({
   app: Object.freeze({
     displayName: __APP_DISPLAY_NAME__,
@@ -16,7 +18,7 @@ export const appConfig = Object.freeze({
     version: __APP_VERSION__,
     buildSha: __BUILD_SHA__,
     buildTime: __BUILD_TIME__,
-    environment: import.meta.env.VITE_APP_ENVIRONMENT || 'local',
+    environment: appEnvironment,
   }),
   sync: Object.freeze({
     pushBatchSize: numberFromEnv(import.meta.env.VITE_SYNC_PUSH_BATCH_SIZE, 20),
@@ -31,7 +33,10 @@ export const appConfig = Object.freeze({
     checkIntervalMs: numberFromEnv(import.meta.env.VITE_VERSION_CHECK_INTERVAL_MS, 60_000),
   }),
   diagnostics: Object.freeze({
-    enabled: booleanFromEnv(import.meta.env.VITE_DIAGNOSTICS_ENABLED, true),
+    enabled: booleanFromEnv(
+      import.meta.env.VITE_DIAGNOSTICS_ENABLED,
+      appEnvironment !== 'production',
+    ),
     maxRecentLogs: numberFromEnv(import.meta.env.VITE_DIAGNOSTICS_MAX_LOGS, 100),
   }),
 })

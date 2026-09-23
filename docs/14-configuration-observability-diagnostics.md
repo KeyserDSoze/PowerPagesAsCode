@@ -42,7 +42,7 @@ Do not log:
 - personal information unless explicitly approved;
 - passwords or authentication assertions.
 
-Backend endpoints use `RuntimeLogger`, which includes the Power Pages activity ID and compact operational context such as operation/record IDs.
+Backend endpoints use `RuntimeLogger`, which includes the Power Pages activity ID and compact operational context. Information, warning and error events are routed to the matching Power Pages logger method.
 
 ## Error boundary
 
@@ -69,6 +69,25 @@ It reports:
 - recent structured operational events.
 
 The diagnostics page must remain metadata-only. Never expose credentials or business payloads there.
+
+### Environment default
+
+Diagnostics default to:
+
+```text
+local        enabled
+development  enabled
+test         enabled
+production   disabled
+```
+
+Production diagnostics can be explicitly enabled at build time with:
+
+```text
+VITE_DIAGNOSTICS_ENABLED=true
+```
+
+This makes the support surface available when deliberately required without exposing it by default in production.
 
 ## Storage lifecycle
 
