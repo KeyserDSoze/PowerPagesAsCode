@@ -47,7 +47,9 @@ npm run build
 
 Inspect:
 
-- `dist/version.json`;
+- `src/frontend/dist/version.json`;
+- `src/backend/dist/server-logic/*`;
+- `.artifacts/powerpages/` as the atomic upload package;
 - generated PWA assets;
 - `.powerpages-site/server-logic/*/*.js` versus `src/backend`.
 
@@ -56,7 +58,7 @@ Inspect:
 After PAC CLI authentication:
 
 ```bash
-pac pages upload-code-site --rootPath .
+pac pages upload-code-site --rootPath .artifacts/powerpages
 ```
 
 For normal releases prefer the GitHub Actions deployment workflow because it also enforces/records the application version.

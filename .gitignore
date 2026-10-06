@@ -1,5 +1,8 @@
 node_modules/
 dist/
+.artifacts/
+.npm/
+*.tsbuildinfo
 coverage/
 playwright-report/
 test-results/

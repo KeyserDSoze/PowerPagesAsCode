@@ -137,7 +137,7 @@ npm run build
 Manual upload:
 
 ```bash
-pac pages upload-code-site --rootPath .
+pac pages upload-code-site --rootPath .artifacts/powerpages
 ```
 
 For normal releases, use GitHub Actions rather than manual upload because the workflow also applies the semantic-version deployment gate.

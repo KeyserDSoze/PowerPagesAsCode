@@ -22,5 +22,6 @@ The documents are intentionally split by concern so architecture, operations, se
 | [15-sync-pull-retry-conflicts-idempotency.md](15-sync-pull-retry-conflicts-idempotency.md) | Pull cursor, retry/backoff, conflict and idempotency model |
 | [16-repository-security-and-developer-experience.md](16-repository-security-and-developer-experience.md) | CodeQL, Dependabot, CODEOWNERS, Node/tooling and branch policy |
 | [17-rebranding-and-template-reuse.md](17-rebranding-and-template-reuse.md) | Central branding configuration, rebrand script and GitHub template workflow |
+| [18-gitlab-cicd.md](18-gitlab-cicd.md) | GitLab verification, Power Pages deployment and static Pages preview |
 
 Architecture decisions are recorded separately under [adr/](adr/). All coding agents must also read the repository root [AGENTS.md](../AGENTS.md).

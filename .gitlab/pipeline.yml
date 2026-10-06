@@ -1,0 +1,83 @@
+stages:
+  - verify
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+default:
+  image: node:22-bookworm
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+
+verify:
+  stage: verify
+  script:
+    - npm run doctor
+    - npm run check
+    - npm test
+    - npm run security:audit
+    - npm run build
+    - test -f src/frontend/dist/version.json
+    - test -f src/backend/dist/server-logic/health/health.js
+    - test -f .artifacts/powerpages/powerpages.config.json
+    - npx playwright install --with-deps chromium
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths:
+      - test-results/
+      - playwright-report/
+
+deploy-powerpages-development:
+  stage: deploy
+  resource_group: powerpages-development
+  environment:
+    name: development
+  variables:
+    VITE_APP_ENVIRONMENT: development
+    DOTNET_ROOT: $CI_PROJECT_DIR/.dotnet
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - test -n "$POWER_PLATFORM_ENVIRONMENT_URL"
+    - test -n "$POWER_PLATFORM_TENANT_ID"
+    - test -n "$POWER_PLATFORM_CLIENT_ID"
+    - test -n "$POWER_PLATFORM_CLIENT_SECRET"
+    - curl --fail --show-error --silent --location https://dot.net/v1/dotnet-install.sh --output /tmp/dotnet-install.sh
+    - bash /tmp/dotnet-install.sh --channel 10.0 --install-dir "$DOTNET_ROOT"
+    - export PATH="$DOTNET_ROOT:$CI_PROJECT_DIR/.pac:$PATH"
+    - dotnet tool install Microsoft.PowerApps.CLI.Tool --tool-path "$CI_PROJECT_DIR/.pac"
+    - npm run build
+    - pac auth create --environment "$POWER_PLATFORM_ENVIRONMENT_URL" --tenant "$POWER_PLATFORM_TENANT_ID" --applicationId "$POWER_PLATFORM_CLIENT_ID" --clientSecret "$POWER_PLATFORM_CLIENT_SECRET"
+    - pac pages upload-code-site --rootPath "$CI_PROJECT_DIR/.artifacts/powerpages"
+
+gitlab-pages-preview:
+  stage: deploy
+  resource_group: pages-development
+  variables:
+    VITE_APP_ENVIRONMENT: development
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+  script:
+    - npm run build:frontend
+    - find src/frontend/dist -type f -name '*.map' -delete
+  pages:
+    publish: src/frontend/dist
+    expire_in: 7 days

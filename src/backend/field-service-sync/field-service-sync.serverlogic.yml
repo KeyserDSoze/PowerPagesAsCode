@@ -1,0 +1,5 @@
+adx_serverlogic_adx_webrole: []
+description: 'Centralized offline batch synchronization endpoint for Field Service Work Order execution drafts. Assign an appropriate Web Role before use.'
+display_name: 'Field Service Sync'
+id: 49c9e7c0-4ddb-4af1-a1cb-8b0ec1eb63ad
+name: field-service-sync

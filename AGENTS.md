@@ -14,7 +14,7 @@ Technology baseline:
 - centralized bidirectional synchronization;
 - Power Pages Server Logic;
 - Dataverse / Dynamics 365 Field Service;
-- GitHub Actions + PAC CLI + Entra workload identity federation.
+- GitHub Actions or GitLab CI + PAC CLI + Entra deployment identity.
 
 ## Non-negotiable architecture rules
 
@@ -37,13 +37,17 @@ Technology baseline:
 
 ```text
 .github/workflows/                  CI/CD and security workflows
+.gitlab/                            GitLab CI/CD pipeline implementation
+.gitlab-ci.yml                      GitLab CI entry point
 .github/dependabot.yml              dependency update policy
 .github/CODEOWNERS                  sensitive path ownership
 .powerpages-site/                   generated Power Pages deployment snapshot
+.artifacts/powerpages/              ignored, assembled atomic deployment package
 contracts/                          JSON Schema API contracts
 docs/                               architecture/runbooks/ADRs
 scripts/                            validation, doctor, build and version tooling
 src/frontend/                       React PWA
+src/frontend/dist/                  ignored frontend build output
 src/frontend/src/api/               Power Pages/Server Logic clients
 src/frontend/src/config/            centralized browser configuration
 src/frontend/src/diagnostics/       diagnostics UI
@@ -54,6 +58,7 @@ src/frontend/src/offline/           IndexedDB, outbox, pull/push, retry, conflic
 src/frontend/src/version/           forced application update/version monitor
 src/backend/shared/                 runtime-safe shared backend prelude
 src/backend/<endpoint>/             human-maintained Server Logic endpoint source
+src/backend/dist/                   ignored Server Logic build output
 tests/e2e/                          Playwright
 brand.config.json                   centralized product/PWA branding
 powerpages.config.json              PAC Code Site configuration
@@ -106,7 +111,7 @@ Use Power Pages server objects such as:
 - `Server.Connector.Dataverse`
 - `Server.Connector.HttpClient`
 
-Because Server Logic cannot use normal module imports, shared runtime-safe JavaScript lives under `src/backend/shared/`. The build script concatenates that prelude with each endpoint and writes the generated result to `.powerpages-site/server-logic/`.
+Because Server Logic cannot use normal module imports, shared runtime-safe JavaScript lives under `src/backend/shared/`. `npm run build:backend` concatenates that prelude with each endpoint and writes the generated result to `src/backend/dist/server-logic/`. `npm run backend:sync` writes the same result to the committed `.powerpages-site/server-logic/` snapshot used for drift validation.
 
 Never edit generated deployment JavaScript directly. Run:
 
@@ -391,8 +396,11 @@ The PWA checks the remote version at startup, on interval, online/focus/visibili
 Frontend and backend deploy atomically:
 
 ```bash
-pac pages upload-code-site --rootPath .
+npm run build
+pac pages upload-code-site --rootPath .artifacts/powerpages
 ```
+
+The build keeps frontend and backend intermediates separate, then assembles only the deployable files into `.artifacts/powerpages`. Do not deploy the repository root from CI.
 
 Required GitHub Environment variables:
 

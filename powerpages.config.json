@@ -1,7 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/powerpages.config.json",
   "siteName": "PowerPagesAsCode",
-  "compiledPath": "dist",
+  "compiledPath": "src/frontend/dist",
+  "includeSource": false,
   "defaultLandingPage": "index.html",
   "bundleFilePatterns": [
     "assets/*.js",

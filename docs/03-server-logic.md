@@ -40,10 +40,18 @@ function del() {}
 Develop in:
 
 ```text
-src/backend/<endpoint>/<endpoint>.js
+src/backend/<endpoint>/
+  <endpoint>.js
+  <endpoint>.serverlogic.yml
 ```
 
-Power Pages deployment metadata lives in:
+The backend build output is generated in:
+
+```text
+src/backend/dist/server-logic/<endpoint>/
+```
+
+The committed drift-detection/deployment snapshot lives in:
 
 ```text
 .powerpages-site/server-logic/<endpoint>/
@@ -56,9 +64,10 @@ Run:
 ```bash
 npm run backend:sync
 npm run backend:validate
+npm run build:backend
 ```
 
-The validator checks JavaScript syntax, a baseline list of forbidden runtime patterns, and byte-for-byte equality between source and deployment snapshot.
+The validator checks JavaScript syntax, a baseline list of forbidden runtime patterns, and byte-for-byte equality of both generated JavaScript and endpoint metadata against the committed deployment snapshot.
 
 ## Included endpoints
 

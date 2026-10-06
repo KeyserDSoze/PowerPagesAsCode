@@ -8,7 +8,10 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap.mjs",
     "dev": "npm run dev --workspace ./src/frontend",
-    "build": "npm run version:check && npm run brand:check && npm run contracts:validate && npm run backend:sync && npm run build --workspace ./src/frontend",
+    "build": "npm run version:check && npm run brand:check && npm run contracts:validate && npm run backend:validate && npm run build:backend && npm run build:frontend && npm run build:package",
+    "build:frontend": "npm run build --workspace ./src/frontend",
+    "build:backend": "node scripts/build-server-logic.mjs",
+    "build:package": "node scripts/package-powerpages.mjs",
     "typecheck": "npm run typecheck --workspace ./src/frontend",
     "lint": "npm run lint --workspace ./src/frontend",
     "backend:sync": "node scripts/sync-server-logic.mjs",

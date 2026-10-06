@@ -10,7 +10,7 @@
 4. synchronize and validate Server Logic;
 5. Vitest unit tests;
 6. production build;
-7. verify generated `dist/version.json`;
+7. verify generated `src/frontend/dist/version.json`;
 8. Playwright Chromium tests.
 
 CI does not require Power Platform credentials.
@@ -35,10 +35,10 @@ The deployment is intentionally **atomic**:
 frontend changed OR backend changed
   -> validate whole repository
   -> enforce fresh release version for target environment
-  -> build frontend + version.json
-  -> sync backend deployment snapshot
+  -> build frontend + Server Logic into separate dist directories
+  -> assemble .artifacts/powerpages
   -> authenticate to Power Platform
-  -> pac pages upload-code-site --rootPath .
+  -> pac pages upload-code-site --rootPath .artifacts/powerpages
   -> create deployment version tag
 ```
 
@@ -62,10 +62,10 @@ See `13-versioning-and-forced-updates.md`.
 
 ## PAC CLI
 
-`powerpages.config.json` tells `pac pages upload-code-site` that:
+The packaged `powerpages.config.json` tells `pac pages upload-code-site` that:
 
 - site name comes from `powerpages.config.json` / `brand.config.json`;
-- compiled frontend is in `dist`;
+- compiled frontend is in the package-local `dist`;
 - landing page is `index.html`;
 - the build includes the PWA assets and `version.json`.
 

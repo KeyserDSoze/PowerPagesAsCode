@@ -125,7 +125,7 @@ Then inspect:
 - `brand.config.json`;
 - `powerpages.config.json`;
 - PWA manifest in the build;
-- `dist/version.json`;
+- `src/frontend/dist/version.json`;
 - README/application title;
 - intended IndexedDB name.
 

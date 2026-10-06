@@ -1,6 +1,6 @@
 # PowerPagesAsCode
 
-Production-oriented starter repository for a **Power Pages Code Site** implemented as a React/TypeScript PWA with Power Pages **Server Logic**, centralized bidirectional offline synchronization, GitHub Actions CI/CD, application version enforcement, diagnostics, security automation and a Dynamics 365 Field Service façade example.
+Production-oriented starter repository for a **Power Pages Code Site** implemented as a React/TypeScript PWA with Power Pages **Server Logic**, centralized bidirectional offline synchronization, GitHub Actions/GitLab CI/CD, application version enforcement, diagnostics, security automation and a Dynamics 365 Field Service façade example.
 
 > Status: boilerplate. The repository intentionally does not contain tenant IDs, client IDs, Web Role IDs, Dataverse secrets, environment URLs, or production data.
 
@@ -83,7 +83,10 @@ npm run build
 
 ```text
 .github/                    workflows, Dependabot, CODEOWNERS
+.gitlab/                    GitLab pipeline implementation
+.gitlab-ci.yml              GitLab CI entry point
 .powerpages-site/           generated deployable Server Logic snapshot
+.artifacts/powerpages/      ignored assembled deployment package
 contracts/                  JSON Schema browser/backend contracts
 docs/                       architecture, security, sync and operations
 scripts/                    build, validation, doctor and version tooling
@@ -94,6 +97,8 @@ AGENTS.md                   persistent engineering context for coding agents
 brand.config.json           centralized product/PWA branding
 powerpages.config.json      PAC CLI Code Site configuration
 ```
+
+`npm run build` writes the frontend to `src/frontend/dist`, Server Logic to `src/backend/dist`, then assembles the atomic upload package under `.artifacts/powerpages`. The repository root itself is not used as the CI deployment payload.
 
 ## Before production writes
 
