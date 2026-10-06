@@ -30,9 +30,10 @@ IndexedDB is a local working cache, not a security boundary. Do not store client
 
 - `src/frontend`: human-maintained React/TypeScript source.
 - `src/backend`: human-maintained Server Logic JavaScript source.
-- `.powerpages-site/server-logic`: deployable snapshot expected by Power Pages code-site tooling.
+- `.artifacts/powerpages/.powerpages-site/server-logic`: generated Server Logic structure expected by the Power Pages deployment package.
 - `dist`: generated frontend output; not committed.
-- `scripts/sync-server-logic.mjs`: copies backend source to the deployment snapshot.
+- `scripts/build-server-logic.mjs`: compiles backend source into the ignored backend build output.
+- `scripts/package-powerpages.mjs`: assembles frontend and Server Logic into the ignored atomic deployment package.
 
 ## Deployment unit
 

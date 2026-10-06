@@ -41,7 +41,6 @@ Technology baseline:
 .gitlab-ci.yml                      GitLab CI entry point
 .github/dependabot.yml              dependency update policy
 .github/CODEOWNERS                  sensitive path ownership
-.powerpages-site/                   generated Power Pages deployment snapshot
 .artifacts/powerpages/              ignored, assembled atomic deployment package
 contracts/                          JSON Schema API contracts
 docs/                               architecture/runbooks/ADRs
@@ -111,16 +110,16 @@ Use Power Pages server objects such as:
 - `Server.Connector.Dataverse`
 - `Server.Connector.HttpClient`
 
-Because Server Logic cannot use normal module imports, shared runtime-safe JavaScript lives under `src/backend/shared/`. `npm run build:backend` concatenates that prelude with each endpoint and writes the generated result to `src/backend/dist/server-logic/`. `npm run backend:sync` writes the same result to the committed `.powerpages-site/server-logic/` snapshot used for drift validation.
+Because Server Logic cannot use normal module imports, shared runtime-safe JavaScript lives under `src/backend/shared/`. `npm run build:backend` concatenates that prelude with each endpoint and writes the generated result to `src/backend/dist/server-logic/`. The packaging step creates `.artifacts/powerpages/.powerpages-site/server-logic/` for PAC CLI; generated deployment folders are not committed.
 
 Never edit generated deployment JavaScript directly. Run:
 
 ```bash
-npm run backend:sync
+npm run build:backend
 npm run backend:validate
 ```
 
-CI rejects snapshot drift and forbidden Server Logic patterns. The validation command MUST run against the committed deployment snapshot before any build-time `backend:sync`; do not hide stale generated files by synchronizing them inside the static-check command.
+CI validates Server Logic source, metadata GUID/name consistency, ECMAScript syntax and forbidden runtime patterns before packaging.
 
 ## Configuration rules
 

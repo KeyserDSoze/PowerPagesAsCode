@@ -14,7 +14,6 @@
     "build:package": "node scripts/package-powerpages.mjs",
     "typecheck": "npm run typecheck --workspace ./src/frontend",
     "lint": "npm run lint --workspace ./src/frontend",
-    "backend:sync": "node scripts/sync-server-logic.mjs",
     "backend:validate": "node scripts/validate-server-logic.mjs",
     "brand:check": "node scripts/check-brand.mjs",
     "rebrand": "node scripts/rebrand.mjs",

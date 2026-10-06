@@ -34,11 +34,10 @@ src/backend/<endpoint>/<endpoint>.js
 Then:
 
 ```bash
-npm run backend:sync
 npm run backend:validate
 ```
 
-Commit both source and `.powerpages-site` snapshot changes. CI rejects drift.
+Commit the Server Logic source and `.serverlogic.yml` metadata under `src/backend/<endpoint>/`. Build/deployment folders are generated and ignored.
 
 ## Before a pull request
 

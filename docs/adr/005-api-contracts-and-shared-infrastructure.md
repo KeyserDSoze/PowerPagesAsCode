@@ -13,4 +13,4 @@ Use JSON Schema under `contracts/` as the technology-neutral API contract. Keep 
 
 ## Consequences
 
-Contract changes are explicit and reviewable. Backend helpers can be centralized without unsupported imports. The deployment snapshot is generated and CI rejects drift.
+Contract changes are explicit and reviewable. Backend helpers can be centralized without unsupported imports. CI validates backend source and the build generates the deployable Server Logic structure.

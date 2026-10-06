@@ -35,7 +35,7 @@ function patch() {}
 function del() {}
 ```
 
-## Source and deployment snapshot
+## Source and generated deployment structure
 
 Develop in:
 
@@ -51,23 +51,24 @@ The backend build output is generated in:
 src/backend/dist/server-logic/<endpoint>/
 ```
 
-The committed drift-detection/deployment snapshot lives in:
+The final packaging step generates the PAC CLI structure in:
 
 ```text
-.powerpages-site/server-logic/<endpoint>/
+.artifacts/powerpages/.powerpages-site/server-logic/<endpoint>/
   <endpoint>.js
   <endpoint>.serverlogic.yml
 ```
 
+This generated `.powerpages-site` directory is intentionally not committed.
+
 Run:
 
 ```bash
-npm run backend:sync
 npm run backend:validate
 npm run build:backend
 ```
 
-The validator checks JavaScript syntax, a baseline list of forbidden runtime patterns, and byte-for-byte equality of both generated JavaScript and endpoint metadata against the committed deployment snapshot.
+The validator checks JavaScript syntax, a baseline list of forbidden runtime patterns, and endpoint metadata name/GUID consistency directly from the source tree.
 
 ## Included endpoints
 

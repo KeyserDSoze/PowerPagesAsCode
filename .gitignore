@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .artifacts/
+.powerpages-site/
 .npm/
 *.tsbuildinfo
 coverage/

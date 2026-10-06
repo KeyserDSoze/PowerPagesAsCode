@@ -14,7 +14,7 @@ Power Pages still requires the frontend and Server Logic to move together as one
 
 - build the frontend into `src/frontend/dist`;
 - build Server Logic into `src/backend/dist/server-logic`;
-- retain `.powerpages-site/server-logic` as the committed drift-detection snapshot;
+- keep `.powerpages-site` out of source control and generate it only inside the deployment package;
 - assemble frontend, Server Logic metadata and a package-local `powerpages.config.json` into `.artifacts/powerpages`;
 - point CI deployment at `.artifacts/powerpages`, never the repository root;
 - keep GitLab Pages as an optional static frontend preview, separate from the Power Pages deployment.

@@ -51,7 +51,7 @@ Inspect:
 - `src/backend/dist/server-logic/*`;
 - `.artifacts/powerpages/` as the atomic upload package;
 - generated PWA assets;
-- `.powerpages-site/server-logic/*/*.js` versus `src/backend`.
+- `.artifacts/powerpages/.powerpages-site/server-logic/*` versus `src/backend`.
 
 ## First manual upload
 

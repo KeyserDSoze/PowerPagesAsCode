@@ -42,7 +42,6 @@ for (const requiredPath of [
   'contracts',
   'src/frontend/src/offline',
   'src/backend/shared',
-  '.powerpages-site/server-logic',
 ]) {
   try {
     await access(path.join(root, requiredPath))

@@ -8,7 +8,6 @@ on:
       - "src/backend/**"
       - "contracts/**"
       - "schemas/**"
-      - ".powerpages-site/**"
       - "scripts/**"
       - "brand.config.json"
       - "powerpages.config.json"

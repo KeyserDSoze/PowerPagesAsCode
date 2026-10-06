@@ -85,7 +85,6 @@ npm run build
 .github/                    workflows, Dependabot, CODEOWNERS
 .gitlab/                    GitLab pipeline implementation
 .gitlab-ci.yml              GitLab CI entry point
-.powerpages-site/           generated deployable Server Logic snapshot
 .artifacts/powerpages/      ignored assembled deployment package
 contracts/                  JSON Schema browser/backend contracts
 docs/                       architecture, security, sync and operations
@@ -98,7 +97,7 @@ brand.config.json           centralized product/PWA branding
 powerpages.config.json      PAC CLI Code Site configuration
 ```
 
-`npm run build` writes the frontend to `src/frontend/dist`, Server Logic to `src/backend/dist`, then assembles the atomic upload package under `.artifacts/powerpages`. The repository root itself is not used as the CI deployment payload.
+`npm run build` writes the frontend to `src/frontend/dist`, Server Logic to `src/backend/dist`, then assembles the atomic upload package under `.artifacts/powerpages`. The Power Pages-specific `.powerpages-site` structure exists only inside that generated package and is not versioned in the source repository.
 
 ## Before production writes
 
